@@ -1,0 +1,727 @@
+{
+  "users": [
+    {
+      "id": "USR-001",
+      "username": "student",
+      "password": "password123",
+      "role": "Student",
+      "name": "Juan Dela Cruz",
+      "email": "juan.delacruz@pnc.edu.ph",
+      "studentNumber": "2026-00001",
+      "program": "BS Information Technology",
+      "yearLevel": "2nd Year",
+      "status": "Active",
+      "avatar": "JD"
+    },
+    {
+      "id": "USR-002",
+      "username": "registrar",
+      "password": "password123",
+      "role": "Registrar",
+      "name": "Maria Santos, LPT",
+      "email": "m.santos@registrar.pnc.edu.ph",
+      "department": "University Registrar",
+      "status": "Active",
+      "avatar": "MS"
+    },
+    {
+      "id": "USR-003",
+      "username": "cashier",
+      "password": "password123",
+      "role": "Cashier",
+      "name": "Ricardo Gonzales, CPA",
+      "email": "r.gonzales@accounting.pnc.edu.ph",
+      "department": "Cashier & Treasury Office",
+      "status": "Active",
+      "avatar": "RG"
+    },
+    {
+      "id": "USR-004",
+      "username": "department",
+      "password": "password123",
+      "role": "Department Staff",
+      "name": "Dr. Arnaldo Perez, DIT",
+      "email": "a.perez@ccs.pnc.edu.ph",
+      "department": "College of Computing Studies",
+      "status": "Active",
+      "avatar": "AP"
+    },
+    {
+      "id": "USR-005",
+      "username": "admin",
+      "password": "password123",
+      "role": "Administrator",
+      "name": "SysAdmin Elena Ramos",
+      "email": "admin@pnc.edu.ph",
+      "department": "Management Information System (MIS)",
+      "status": "Active",
+      "avatar": "ER"
+    }
+  ],
+  "students": [
+    {
+      "studentNumber": "2026-00001",
+      "name": "Juan Dela Cruz",
+      "program": "BS Information Technology",
+      "yearLevel": "2nd Year",
+      "academicStatus": "Regular",
+      "gpa": "1.45",
+      "contact": "0917-123-4567",
+      "email": "juan.delacruz@pnc.edu.ph",
+      "address": "Brgy. Banlic, Cabuyao City, Laguna"
+    },
+    {
+      "studentNumber": "2026-00002",
+      "name": "Angela Nicole Reyes",
+      "program": "BS Computer Science",
+      "yearLevel": "3rd Year",
+      "academicStatus": "Regular",
+      "gpa": "1.25",
+      "contact": "0918-987-6543",
+      "email": "angela.reyes@pnc.edu.ph",
+      "address": "Brgy. Sala, Cabuyao City, Laguna"
+    },
+    {
+      "studentNumber": "2026-00003",
+      "name": "Mark Lester Lim",
+      "program": "BS Information Technology",
+      "yearLevel": "1st Year",
+      "academicStatus": "Irregular",
+      "gpa": "2.10",
+      "contact": "0922-345-6789",
+      "email": "mark.lim@pnc.edu.ph",
+      "address": "Brgy. Mamatid, Cabuyao City, Laguna"
+    }
+  ],
+  "terms": [
+    {
+      "id": "TERM-2026-1",
+      "academicYear": "2025-2026",
+      "semester": "1st Semester",
+      "isCurrent": false,
+      "status": "Closed"
+    },
+    {
+      "id": "TERM-2026-2",
+      "academicYear": "2025-2026",
+      "semester": "2nd Semester",
+      "isCurrent": true,
+      "status": "Open"
+    }
+  ],
+  "offerings": [
+    {
+      "id": "SEC-IT201-A",
+      "subjectCode": "IT201",
+      "subjectTitle": "Data Structures and Algorithms",
+      "units": 3,
+      "section": "BSIT 2A",
+      "term": "2nd Semester 2025-2026",
+      "schedule": "Mon / Wed 08:00 AM - 10:00 AM",
+      "room": "CCS Lab 3",
+      "instructor": "Engr. J. Tatlonghari",
+      "totalSlots": 40,
+      "availableSlots": 12,
+      "prerequisites": "IT102 - Computer Programming 2",
+      "isPrerequisiteSatisfied": true,
+      "status": "Open"
+    },
+    {
+      "id": "SEC-IT202-A",
+      "subjectCode": "IT202",
+      "subjectTitle": "Information Management (Databases)",
+      "units": 3,
+      "section": "BSIT 2A",
+      "term": "2nd Semester 2025-2026",
+      "schedule": "Tue / Thu 10:00 AM - 12:00 PM",
+      "room": "CCS Lab 1",
+      "instructor": "Prof. F. Cantillano",
+      "totalSlots": 40,
+      "availableSlots": 8,
+      "prerequisites": "IT102 - Computer Programming 2",
+      "isPrerequisiteSatisfied": true,
+      "status": "Open"
+    },
+    {
+      "id": "SEC-IT203-A",
+      "subjectCode": "IT203",
+      "subjectTitle": "Web Systems and Technologies 1",
+      "units": 3,
+      "section": "BSIT 2A",
+      "term": "2nd Semester 2025-2026",
+      "schedule": "Mon / Wed 01:00 PM - 03:00 PM",
+      "room": "CCS Lab 2",
+      "instructor": "Dr. A. Perez",
+      "totalSlots": 40,
+      "availableSlots": 4,
+      "prerequisites": "IT101 - Introduction to Computing",
+      "isPrerequisiteSatisfied": true,
+      "status": "Open"
+    },
+    {
+      "id": "SEC-IT204-A",
+      "subjectCode": "IT204",
+      "subjectTitle": "Object-Oriented Programming (Java)",
+      "units": 3,
+      "section": "BSIT 2A",
+      "term": "2nd Semester 2025-2026",
+      "schedule": "Tue / Thu 01:00 PM - 03:00 PM",
+      "room": "CCS Lab 4",
+      "instructor": "Prof. R. Tuiza",
+      "totalSlots": 35,
+      "availableSlots": 0,
+      "prerequisites": "IT102 - Computer Programming 2",
+      "isPrerequisiteSatisfied": true,
+      "status": "Full"
+    },
+    {
+      "id": "SEC-IT205-A",
+      "subjectCode": "IT205",
+      "subjectTitle": "Advanced Networking & Routing",
+      "units": 3,
+      "section": "BSIT 2A",
+      "term": "2nd Semester 2025-2026",
+      "schedule": "Fri 08:00 AM - 02:00 PM",
+      "room": "Cisco Lab",
+      "instructor": "Engr. M. Galang",
+      "totalSlots": 30,
+      "availableSlots": 15,
+      "prerequisites": "IT200 - Networking 1 (Unsatisfied)",
+      "isPrerequisiteSatisfied": false,
+      "status": "Open"
+    },
+    {
+      "id": "SEC-GE004-A",
+      "subjectCode": "GE004",
+      "subjectTitle": "Purposive Communication",
+      "units": 3,
+      "section": "BSIT 2A",
+      "term": "2nd Semester 2025-2026",
+      "schedule": "Mon / Wed 10:30 AM - 12:00 PM",
+      "room": "Room 302",
+      "instructor": "Prof. C. Hemedez",
+      "totalSlots": 45,
+      "availableSlots": 20,
+      "prerequisites": "None",
+      "isPrerequisiteSatisfied": true,
+      "status": "Open"
+    },
+    {
+      "id": "SEC-PE004-A",
+      "subjectCode": "PE004",
+      "subjectTitle": "Physical Education 4 (Team Sports)",
+      "units": 2,
+      "section": "BSIT 2A",
+      "term": "2nd Semester 2025-2026",
+      "schedule": "Sat 08:00 AM - 10:00 AM",
+      "room": "University Gymnasium",
+      "instructor": "Coach R. Blando",
+      "totalSlots": 50,
+      "availableSlots": 25,
+      "prerequisites": "PE003",
+      "isPrerequisiteSatisfied": true,
+      "status": "Open"
+    }
+  ],
+  "enrollments": [
+    {
+      "id": "ENR-2026-001",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "program": "BS Information Technology",
+      "term": "2nd Semester 2025-2026",
+      "academicYear": "2025-2026",
+      "semester": "2nd Semester",
+      "dateSubmitted": "2026-06-15 09:30 AM",
+      "status": "Approved",
+      "totalUnits": 17,
+      "remarks": "Approved for official matriculation.",
+      "items": [
+        {
+          "subjectCode": "IT201",
+          "subjectTitle": "Data Structures and Algorithms",
+          "units": 3,
+          "section": "BSIT 2A",
+          "schedule": "Mon / Wed 08:00 AM - 10:00 AM",
+          "room": "CCS Lab 3"
+        },
+        {
+          "subjectCode": "IT202",
+          "subjectTitle": "Information Management (Databases)",
+          "units": 3,
+          "section": "BSIT 2A",
+          "schedule": "Tue / Thu 10:00 AM - 12:00 PM",
+          "room": "CCS Lab 1"
+        },
+        {
+          "subjectCode": "IT203",
+          "subjectTitle": "Web Systems and Technologies 1",
+          "units": 3,
+          "section": "BSIT 2A",
+          "schedule": "Mon / Wed 01:00 PM - 03:00 PM",
+          "room": "CCS Lab 2"
+        },
+        {
+          "subjectCode": "GE004",
+          "subjectTitle": "Purposive Communication",
+          "units": 3,
+          "section": "BSIT 2A",
+          "schedule": "Mon / Wed 10:30 AM - 12:00 PM",
+          "room": "Room 302"
+        },
+        {
+          "subjectCode": "PE004",
+          "subjectTitle": "Physical Education 4 (Team Sports)",
+          "units": 2,
+          "section": "BSIT 2A",
+          "schedule": "Sat 08:00 AM - 10:00 AM",
+          "room": "University Gymnasium"
+        }
+      ],
+      "fees": {
+        "tuition": 3400,
+        "miscellaneous": 1250,
+        "laboratory": 1500,
+        "library": 300,
+        "athletic": 200,
+        "total": 6650
+      }
+    },
+    {
+      "id": "ENR-2026-002",
+      "studentNumber": "2026-00002",
+      "studentName": "Angela Nicole Reyes",
+      "program": "BS Computer Science",
+      "term": "2nd Semester 2025-2026",
+      "academicYear": "2025-2026",
+      "semester": "2nd Semester",
+      "dateSubmitted": "2026-06-18 11:20 AM",
+      "status": "Pending",
+      "totalUnits": 18,
+      "remarks": "",
+      "items": [
+        {
+          "subjectCode": "CS301",
+          "subjectTitle": "Automata Theory & Formal Languages",
+          "units": 3,
+          "section": "BSCS 3A",
+          "schedule": "Mon / Wed 09:00 AM - 11:00 AM",
+          "room": "CCS Lab 4"
+        },
+        {
+          "subjectCode": "CS302",
+          "subjectTitle": "Design and Analysis of Algorithms",
+          "units": 3,
+          "section": "BSCS 3A",
+          "schedule": "Tue / Thu 01:00 PM - 03:00 PM",
+          "room": "CCS Lab 4"
+        },
+        {
+          "subjectCode": "CS303",
+          "subjectTitle": "Software Engineering 1",
+          "units": 3,
+          "section": "BSCS 3A",
+          "schedule": "Fri 08:00 AM - 02:00 PM",
+          "room": "CCS Lab 1"
+        }
+      ],
+      "fees": {
+        "tuition": 3600,
+        "miscellaneous": 1250,
+        "laboratory": 1500,
+        "library": 300,
+        "athletic": 200,
+        "total": 6850
+      }
+    },
+    {
+      "id": "ENR-2026-003",
+      "studentNumber": "2026-00003",
+      "studentName": "Mark Lester Lim",
+      "program": "BS Information Technology",
+      "term": "2nd Semester 2025-2026",
+      "academicYear": "2025-2026",
+      "semester": "2nd Semester",
+      "dateSubmitted": "2026-06-19 02:45 PM",
+      "status": "Pending",
+      "totalUnits": 15,
+      "remarks": "",
+      "items": [
+        {
+          "subjectCode": "IT101",
+          "subjectTitle": "Introduction to Computing",
+          "units": 3,
+          "section": "BSIT 1B",
+          "schedule": "Mon / Wed 08:00 AM - 10:00 AM",
+          "room": "Room 201"
+        },
+        {
+          "subjectCode": "IT102",
+          "subjectTitle": "Computer Programming 2",
+          "units": 3,
+          "section": "BSIT 1B",
+          "schedule": "Tue / Thu 08:00 AM - 10:00 AM",
+          "room": "CCS Lab 2"
+        }
+      ],
+      "fees": {
+        "tuition": 3000,
+        "miscellaneous": 1250,
+        "laboratory": 1000,
+        "library": 300,
+        "athletic": 200,
+        "total": 5750
+      }
+    }
+  ],
+  "payments": [
+    {
+      "id": "PAY-2026-8801",
+      "enrollmentId": "ENR-2026-001",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "amount": 6650,
+      "paymentMethod": "Bank Transfer (Landbank of the Philippines)",
+      "referenceNumber": "LBP-9923841029",
+      "paymentDate": "2026-06-16 10:15 AM",
+      "status": "Verified",
+      "proofFileName": "juan_delacruz_lbp_receipt.pdf",
+      "proofFileSize": "1.4 MB",
+      "verifiedBy": "Ricardo Gonzales (Cashier)",
+      "verifiedDate": "2026-06-16 02:30 PM",
+      "remarks": "Full payment confirmed. Receipt issued #OR-99120."
+    },
+    {
+      "id": "PAY-2026-8802",
+      "enrollmentId": "ENR-2026-002",
+      "studentNumber": "2026-00002",
+      "studentName": "Angela Nicole Reyes",
+      "amount": 6850,
+      "paymentMethod": "GCash e-Wallet",
+      "referenceNumber": "GCASH-78391024",
+      "paymentDate": "2026-06-18 01:45 PM",
+      "status": "Pending",
+      "proofFileName": "angela_gcash_slip.jpg",
+      "proofFileSize": "680 KB",
+      "verifiedBy": "",
+      "verifiedDate": "",
+      "remarks": ""
+    }
+  ],
+  "clearances": [
+    {
+      "id": "CLR-2026-001",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "program": "BS Information Technology",
+      "term": "2nd Semester 2025-2026",
+      "overallStatus": "Clearance Complete",
+      "signoffs": [
+        {
+          "officeName": "Department (College of Computing Studies)",
+          "status": "Signed",
+          "signedBy": "Dr. Arnaldo Perez",
+          "signedDate": "2026-06-10 11:30 AM",
+          "remarks": "No property accountability; laboratory clearance approved."
+        },
+        {
+          "officeName": "Cashier & Treasury Office",
+          "status": "Signed",
+          "signedBy": "Ricardo Gonzales",
+          "signedDate": "2026-06-16 02:40 PM",
+          "remarks": "Zero balance for the current semester."
+        },
+        {
+          "officeName": "University Registrar",
+          "status": "Signed",
+          "signedBy": "Maria Santos",
+          "signedDate": "2026-06-17 09:15 AM",
+          "remarks": "Official records and admission requirements complete."
+        }
+      ]
+    },
+    {
+      "id": "CLR-2026-002",
+      "studentNumber": "2026-00002",
+      "studentName": "Angela Nicole Reyes",
+      "program": "BS Computer Science",
+      "term": "2nd Semester 2025-2026",
+      "overallStatus": "Clearance Pending",
+      "signoffs": [
+        {
+          "officeName": "Department (College of Computing Studies)",
+          "status": "Signed",
+          "signedBy": "Dr. Arnaldo Perez",
+          "signedDate": "2026-06-11 02:15 PM",
+          "remarks": "CS Laboratory project submitted."
+        },
+        {
+          "officeName": "Cashier & Treasury Office",
+          "status": "Pending",
+          "signedBy": "",
+          "signedDate": "",
+          "remarks": "Awaiting payment verification."
+        },
+        {
+          "officeName": "University Registrar",
+          "status": "Pending",
+          "signedBy": "",
+          "signedDate": "",
+          "remarks": "Awaiting accounting signoff."
+        }
+      ]
+    },
+    {
+      "id": "CLR-2026-003",
+      "studentNumber": "2026-00003",
+      "studentName": "Mark Lester Lim",
+      "program": "BS Information Technology",
+      "term": "2nd Semester 2025-2026",
+      "overallStatus": "Clearance Pending",
+      "signoffs": [
+        {
+          "officeName": "Department (College of Computing Studies)",
+          "status": "Pending",
+          "signedBy": "",
+          "signedDate": "",
+          "remarks": ""
+        },
+        {
+          "officeName": "Cashier & Treasury Office",
+          "status": "Pending",
+          "signedBy": "",
+          "signedDate": "",
+          "remarks": ""
+        },
+        {
+          "officeName": "University Registrar",
+          "status": "Pending",
+          "signedBy": "",
+          "signedDate": "",
+          "remarks": ""
+        }
+      ]
+    }
+  ],
+  "grades": [
+    {
+      "id": "GRD-101",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "term": "1st Semester 2025-2026",
+      "subjectCode": "IT101",
+      "subjectTitle": "Introduction to Computing",
+      "units": 3,
+      "grade": "1.25",
+      "status": "Validated",
+      "encodedBy": "Dr. Arnaldo Perez (Faculty)",
+      "dateEncoded": "2026-01-05 03:20 PM",
+      "validatedBy": "Maria Santos (Registrar)",
+      "dateValidated": "2026-01-08 10:00 AM"
+    },
+    {
+      "id": "GRD-102",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "term": "1st Semester 2025-2026",
+      "subjectCode": "IT102",
+      "subjectTitle": "Computer Programming 2",
+      "units": 3,
+      "grade": "1.50",
+      "status": "Validated",
+      "encodedBy": "Prof. F. Cantillano (Faculty)",
+      "dateEncoded": "2026-01-05 04:10 PM",
+      "validatedBy": "Maria Santos (Registrar)",
+      "dateValidated": "2026-01-08 10:00 AM"
+    },
+    {
+      "id": "GRD-103",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "term": "2nd Semester 2025-2026",
+      "subjectCode": "IT201",
+      "subjectTitle": "Data Structures and Algorithms",
+      "units": 3,
+      "grade": "1.50",
+      "status": "Encoded",
+      "encodedBy": "Engr. J. Tatlonghari (Faculty)",
+      "dateEncoded": "2026-06-25 01:15 PM",
+      "validatedBy": "",
+      "dateValidated": ""
+    },
+    {
+      "id": "GRD-104",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "term": "2nd Semester 2025-2026",
+      "subjectCode": "IT202",
+      "subjectTitle": "Information Management (Databases)",
+      "units": 3,
+      "grade": "1.75",
+      "status": "Validated",
+      "encodedBy": "Prof. F. Cantillano (Faculty)",
+      "dateEncoded": "2026-06-25 02:40 PM",
+      "validatedBy": "Maria Santos (Registrar)",
+      "dateValidated": "2026-06-28 09:30 AM"
+    },
+    {
+      "id": "GRD-105",
+      "studentNumber": "2026-00002",
+      "studentName": "Angela Nicole Reyes",
+      "term": "2nd Semester 2025-2026",
+      "subjectCode": "CS301",
+      "subjectTitle": "Automata Theory & Formal Languages",
+      "units": 3,
+      "grade": "1.25",
+      "status": "Encoded",
+      "encodedBy": "Dr. Arnaldo Perez (Faculty)",
+      "dateEncoded": "2026-06-26 10:00 AM",
+      "validatedBy": "",
+      "dateValidated": ""
+    }
+  ],
+  "documents": [
+    {
+      "id": "DOC-2026-5501",
+      "trackingNumber": "TRK-2026-9041",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "documentType": "Certificate of Grades (COG)",
+      "purpose": "Scholarship / Educational Assistance Application",
+      "requestDate": "2026-06-18 10:00 AM",
+      "status": "Released",
+      "releaseDate": "2026-06-20 03:30 PM",
+      "remarks": "Official digital copy signed and generated.",
+      "downloadUrl": "#",
+      "processedBy": "Maria Santos (Registrar)"
+    },
+    {
+      "id": "DOC-2026-5502",
+      "trackingNumber": "TRK-2026-9042",
+      "studentNumber": "2026-00001",
+      "studentName": "Juan Dela Cruz",
+      "documentType": "Good Moral Certificate",
+      "purpose": "Internship / OJT Requirement",
+      "requestDate": "2026-06-21 08:45 AM",
+      "status": "Processing",
+      "releaseDate": "",
+      "remarks": "Under verification with Office of Student Affairs.",
+      "downloadUrl": "",
+      "processedBy": "Maria Santos (Registrar)"
+    },
+    {
+      "id": "DOC-2026-5503",
+      "trackingNumber": "TRK-2026-9043",
+      "studentNumber": "2026-00002",
+      "studentName": "Angela Nicole Reyes",
+      "documentType": "Transcript of Records (TOR)",
+      "purpose": "Employment Verification",
+      "requestDate": "2026-06-22 01:15 PM",
+      "status": "Pending",
+      "releaseDate": "",
+      "remarks": "Awaiting documentary review.",
+      "downloadUrl": "",
+      "processedBy": ""
+    }
+  ],
+  "notifications": [
+    {
+      "id": "NOTIF-001",
+      "userId": "USR-001",
+      "title": "Payment Verified",
+      "message": "Your payment of ₱6,650.00 for 2nd Semester 2025-2026 has been verified by the Cashier.",
+      "date": "2026-06-16 02:35 PM",
+      "isRead": false,
+      "relatedModule": "Payments"
+    },
+    {
+      "id": "NOTIF-002",
+      "userId": "USR-001",
+      "title": "Document Released",
+      "message": "Your request for Certificate of Grades (COG) with tracking number TRK-2026-9041 has been released.",
+      "date": "2026-06-20 03:30 PM",
+      "isRead": false,
+      "relatedModule": "Document Requests"
+    },
+    {
+      "id": "NOTIF-003",
+      "userId": "USR-001",
+      "title": "Grade Validated",
+      "message": "Your grade for IT202 (Information Management) has been validated by the Registrar.",
+      "date": "2026-06-28 09:35 AM",
+      "isRead": true,
+      "relatedModule": "Grades"
+    },
+    {
+      "id": "NOTIF-004",
+      "userId": "USR-002",
+      "title": "New Enrollment Submission",
+      "message": "Student Angela Nicole Reyes submitted an enrollment request for BS Computer Science.",
+      "date": "2026-06-18 11:25 AM",
+      "isRead": false,
+      "relatedModule": "Enrollment"
+    },
+    {
+      "id": "NOTIF-005",
+      "userId": "USR-003",
+      "title": "Payment Slip Uploaded",
+      "message": "Student Angela Nicole Reyes uploaded payment proof via GCash (₱6,850.00).",
+      "date": "2026-06-18 01:50 PM",
+      "isRead": false,
+      "relatedModule": "Payments"
+    }
+  ],
+  "audit": [
+    {
+      "id": "AUD-901",
+      "user": "Juan Dela Cruz (Student)",
+      "action": "Submitted Online Enrollment",
+      "dateTime": "2026-06-15 09:30 AM",
+      "module": "Enrollment",
+      "details": "Submitted 5 subjects totaling 14 units for 2nd Sem 2025-2026"
+    },
+    {
+      "id": "AUD-902",
+      "user": "Ricardo Gonzales (Cashier)",
+      "action": "Verified Student Payment",
+      "dateTime": "2026-06-16 02:30 PM",
+      "module": "Payments",
+      "details": "Verified payment of ₱6,650.00 for Juan Dela Cruz (Ref: LBP-9923841029)"
+    },
+    {
+      "id": "AUD-903",
+      "user": "Dr. Arnaldo Perez (Department)",
+      "action": "Encoded Subject Grades",
+      "dateTime": "2026-06-25 01:15 PM",
+      "module": "Grades",
+      "details": "Encoded grades for IT201 - Section BSIT 2A"
+    },
+    {
+      "id": "AUD-904",
+      "user": "Maria Santos (Registrar)",
+      "action": "Validated Grades",
+      "dateTime": "2026-06-28 09:30 AM",
+      "module": "Grades",
+      "details": "Validated grade entry for IT202 (Juan Dela Cruz)"
+    },
+    {
+      "id": "AUD-905",
+      "user": "Maria Santos (Registrar)",
+      "action": "Approved Enrollment",
+      "dateTime": "2026-06-17 09:00 AM",
+      "module": "Enrollment",
+      "details": "Approved enrollment ENR-2026-001 for Juan Dela Cruz"
+    }
+  ],
+  "settings": {
+    "academicYear": "2025-2026",
+    "semester": "2nd Semester",
+    "enrollmentStatus": "Open",
+    "gradeEncodingStatus": "Open",
+    "clearancePeriodStatus": "Active",
+    "maxUnitsRegular": 24,
+    "maxUnitsIrregular": 18,
+    "universityName": "Pamantasan ng Cabuyao (PnC)",
+    "systemVersion": "v1.0.0-ImplementationReady"
+  }
+}
