@@ -19,6 +19,10 @@ In `.env` set your DB (Postgres, or MySQL if you're on XAMPP), then:
     php artisan serve              # http://127.0.0.1:8000/api/health
 
 Demo logins (all password `password123`): student, registrar, cashier, department, admin
+(type them on the login page; the frontend no longer has quick-fill buttons)
+
+Enrollment flow: Pending -> Registrar sets Approved / Pre-Assessed / Rejected -> student can upload
+payment proof (API rejects it otherwise) -> Cashier verifies -> student is enrolled.
 
 ## 4. Render
 1. Push the backend to GitHub.

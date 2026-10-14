@@ -124,7 +124,9 @@ class EnrollmentController extends Controller
     public function updateStatus(Request $request, string $id)
     {
         $data = $request->validate([
-            'status' => 'required|string|max:50',
+            // "Pre-Assessed" = Registrar reviewed the student's prerequisites/curriculum standing
+            // and opened payment, without a full approval yet.
+            'status' => 'required|string|in:Pending,Approved,Pre-Assessed,Rejected,Enrolled',
             'remarks' => 'nullable|string',
         ]);
 
@@ -137,6 +139,18 @@ class EnrollmentController extends Controller
 
         Oess::audit($request->user(), "{$data['status']} Enrollment", 'Enrollment',
             "{$data['status']} enrollment request {$id} for {$enrollment->studentName}");
+
+        $studentMessage = match ($data['status']) {
+            'Approved' => 'Your enrollment application was approved by the Registrar. You may now submit your proof of payment.',
+            'Pre-Assessed' => 'Your enrollment application was pre-assessed by the Registrar. You may now submit your proof of payment.',
+            'Rejected' => 'Your enrollment application was not approved by the Registrar.',
+            default => null,
+        };
+        if ($studentMessage) {
+            $remarks = ! empty($data['remarks']) ? " Remarks: {$data['remarks']}" : '';
+            Oess::notifyStudent($enrollment->studentNumber, "Enrollment {$data['status']}", $studentMessage . $remarks, 'Enrollment');
+        }
+
         return $enrollment;
     }
 }

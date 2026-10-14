@@ -33,8 +33,28 @@ class PaymentController extends Controller
         ]);
 
         // default to the student's latest enrollment
-        $enrollmentId = $data['enrollmentId']
-            ?? Enrollment::where('studentNumber', $user->studentNumber)->orderByDesc('seq')->value('id');
+        $enrollmentQuery = Enrollment::where('studentNumber', $user->studentNumber);
+        $enrollment = ! empty($data['enrollmentId'])
+            ? $enrollmentQuery->where('id', $data['enrollmentId'])->first()
+            : $enrollmentQuery->orderByDesc('seq')->first();
+
+        if (! $enrollment) {
+            return response()->json(['message' => 'No enrollment application found for this payment.'], 422);
+        }
+
+        // payment opens only after the Registrar approves or pre-assesses the enrollment
+        $enrollmentStatus = strtolower(preg_replace('/[\s_-]/', '', (string) $enrollment->status));
+        if (! in_array($enrollmentStatus, ['approved', 'preassessed'], true)) {
+            return response()->json([
+                'message' => 'Payment proof can only be submitted after the Registrar approves or pre-assesses your enrollment.',
+            ], 422);
+        }
+
+        if (Payment::where('enrollmentId', $enrollment->id)->where('status', 'Verified')->exists()) {
+            return response()->json(['message' => 'This enrollment already has a verified payment.'], 422);
+        }
+
+        $enrollmentId = $enrollment->id;
 
         $payment = Payment::create([
             'id' => Oess::randomId(Payment::class, 'PAY-2026'),
