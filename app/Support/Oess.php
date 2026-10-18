@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\AuditLog;
 use App\Models\Notification;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 class Oess
 {
@@ -83,5 +84,31 @@ class Oess
                 : $query->whereRaw('1 = 0');
         }
         return $requested ? $query->where('studentNumber', $requested) : $query;
+    }
+
+    public static function paginateIfRequested($query, Request $request, array $searchableColumns = [])
+    {
+        if (! $request->hasAny(['page', 'per_page'])) {
+            return $query->get();
+        }
+
+        $perPage = min(max($request->integer('per_page', 10), 1), 100);
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '' && $searchableColumns !== []) {
+            $query->where(function ($builder) use ($search, $searchableColumns) {
+                foreach ($searchableColumns as $column) {
+                    $builder->orWhere($column, 'like', '%' . $search . '%');
+                }
+            });
+        }
+
+        $filterField = $request->query('filter_field');
+        $filterValue = $request->query('filter_value');
+        if ($filterField !== null && $filterField !== '' && $filterValue !== null && $filterValue !== '') {
+            abort_unless(in_array($filterField, $searchableColumns, true), 422, 'Invalid filter field.');
+            $query->where($filterField, $filterValue);
+        }
+
+        return $query->paginate($perPage);
     }
 }

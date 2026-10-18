@@ -11,7 +11,11 @@ class DocumentRequestController extends Controller
     public function index(Request $request)
     {
         $q = DocumentRequest::orderByDesc('seq');
-        return Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'))->get();
+        return Oess::paginateIfRequested(
+            Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber')),
+            $request,
+            ['id', 'trackingNumber', 'studentNumber', 'studentName', 'documentType', 'purpose', 'status', 'processedBy']
+        );
     }
 
     public function store(Request $request)

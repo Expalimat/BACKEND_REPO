@@ -18,7 +18,11 @@ class ClearanceController extends Controller
     public function index(Request $request)
     {
         $q = Clearance::orderBy('seq');
-        return Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'))->get();
+        return Oess::paginateIfRequested(
+            Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber')),
+            $request,
+            ['studentNumber', 'studentName', 'program', 'overallStatus']
+        );
     }
 
     public function sign(Request $request, string $id)

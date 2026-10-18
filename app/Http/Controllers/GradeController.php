@@ -7,13 +7,54 @@ use App\Models\Student;
 use App\Models\SystemSetting;
 use App\Support\Oess;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class GradeController extends Controller
 {
     public function index(Request $request)
     {
         $q = Grade::orderByDesc('seq');
-        return Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'))->get();
+        $q = Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'));
+        if ($request->filled('term')) {
+            $q->where('term', $request->query('term'));
+        }
+
+        if ($request->hasAny(['page', 'per_page'])) {
+            $summary = (clone $q)->get(['grade', 'units', 'status']);
+            $validatedGrades = $summary->where('status', 'Validated');
+            $gradePoints = 0;
+            $validatedUnits = 0;
+            foreach ($validatedGrades as $grade) {
+                $numericGrade = filter_var($grade->grade, FILTER_VALIDATE_FLOAT);
+                if ($numericGrade !== false) {
+                    $gradePoints += $numericGrade * $grade->units;
+                    $validatedUnits += $grade->units;
+                }
+            }
+
+            $page = Oess::paginateIfRequested(
+                $q,
+                $request,
+                ['studentNumber', 'studentName', 'term', 'subjectCode', 'subjectTitle', 'grade', 'status', 'encodedBy', 'validatedBy']
+            );
+
+            if ($page instanceof LengthAwarePaginator) {
+                return response()->json($page->toArray() + [
+                    'summary' => [
+                        'validatedCount' => $validatedGrades->count(),
+                        'gpa' => $validatedUnits > 0 ? number_format($gradePoints / $validatedUnits, 2) : 'N/A',
+                    ],
+                ]);
+            }
+
+            return $page;
+        }
+
+        return Oess::paginateIfRequested(
+            $q,
+            $request,
+            ['studentNumber', 'studentName', 'term', 'subjectCode', 'subjectTitle', 'grade', 'status', 'encodedBy', 'validatedBy']
+        );
     }
 
     // Department staff encodes (or re-encodes) a grade

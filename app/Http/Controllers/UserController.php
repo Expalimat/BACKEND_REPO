@@ -11,9 +11,11 @@ class UserController extends Controller
 {
     private const ROLES = ['Student', 'Registrar', 'Cashier', 'Department Staff', 'Administrator'];
 
-    public function index()
+    public function index(Request $request)
     {
-        return User::orderBy('seq')->get();
+        return Oess::paginateIfRequested(User::orderBy('seq'), $request, [
+            'username', 'name', 'email', 'role', 'studentNumber', 'program', 'yearLevel', 'department', 'status',
+        ]);
     }
 
     public function store(Request $request)
