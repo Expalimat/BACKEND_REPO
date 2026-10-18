@@ -24,11 +24,6 @@ Demo logins (all password `password123`): student, registrar, cashier, departmen
 Enrollment flow: Pending -> Registrar sets Approved / Pre-Assessed / Rejected -> student can upload
 payment proof (API rejects it otherwise) -> Cashier verifies -> student is enrolled.
 
-List endpoints accept `page` and `per_page` query parameters and return Laravel
-pagination metadata. Page sizes are capped at 100. Paginated requests may include
-`search`, `filter_field`, and `filter_value`; requests without pagination
-parameters continue to return the full array.
-
 ## 4. Render
 1. Push the backend to GitHub.
 2. Render > New > Postgres (free), copy the Internal Database URL.
