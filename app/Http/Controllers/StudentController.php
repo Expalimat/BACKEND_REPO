@@ -12,7 +12,7 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         return Oess::paginateIfRequested(Student::orderBy('seq'), $request, [
-            'studentNumber', 'name', 'program', 'yearLevel', 'status',
+            'studentNumber', 'name', 'program', 'yearLevel', 'academicStatus',
         ]);
     }
 

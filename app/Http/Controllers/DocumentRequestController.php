@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DocumentRequest;
 use App\Support\Oess;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class DocumentRequestController extends Controller
 {
@@ -26,9 +27,9 @@ class DocumentRequestController extends Controller
         }
 
         $data = $request->validate([
-            'documentType' => 'required|string|max:255',
-            'purpose' => 'required|string',
-            'details' => 'nullable|string',
+            'documentType' => 'required|string|max:100',
+            'purpose' => 'required|string|max:500',
+            'details' => 'nullable|string|max:1000',
         ]);
 
         $year = now('Asia/Manila')->year;
@@ -60,8 +61,8 @@ class DocumentRequestController extends Controller
     public function updateStatus(Request $request, string $id)
     {
         $data = $request->validate([
-            'status' => 'required|string|max:50',
-            'remarks' => 'nullable|string',
+            'status' => ['required', 'string', Rule::in(['Pending', 'Processing', 'Released', 'Rejected', 'Cancelled'])],
+            'remarks' => 'nullable|string|max:500',
         ]);
 
         $doc = DocumentRequest::findOrFail($id);

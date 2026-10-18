@@ -19,17 +19,18 @@ class NotificationController extends Controller
 
     public function index(Request $request)
     {
-        $query = $this->mine($request);
-        $result = Oess::paginateIfRequested($query->orderByDesc('seq'), $request, [
-            'title', 'message', 'relatedModule', 'date', 'isRead',
-        ]);
+        $result = Oess::paginateIfRequested(
+            $this->mine($request)->orderByDesc('seq'),
+            $request,
+            ['title', 'message', 'relatedModule', 'date'],
+            ['isRead'] // boolean column: filterable but not text-searchable
+        );
 
         if ($result instanceof LengthAwarePaginator) {
             return response()->json($result->toArray() + [
                 'unreadCount' => $this->mine($request)->where('isRead', false)->count(),
             ]);
         }
-
         return $result;
     }
 
