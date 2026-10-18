@@ -30,3 +30,9 @@ payment proof (API rejects it otherwise) -> Cashier verifies -> student is enrol
 3. Render > New > Web Service > your repo > Runtime: Docker.
 4. Add the env vars from `.env.render.example`.
 5. Health check path: `/api/health`.
+
+## 5. Security (v2)
+- Set `CACHE_STORE=file` and `FRONTEND_URL` on Render (see `.env.render.example`).
+- Copy `config/cors.php` and the two new middleware files in too; `routes/api.php` already uses them.
+- Login lockout: 5 wrong passwords per username = 15 min lock (HTTP 429). Tokens expire after 8 hours.
+- Enrollment/payment/grade/settings inputs are validated server-side; fees must add up to the total.

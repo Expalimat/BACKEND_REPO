@@ -5,6 +5,8 @@ namespace App\Support;
 use App\Models\AuditLog;
 use App\Models\Notification;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class Oess
 {
@@ -83,5 +85,69 @@ class Oess
                 : $query->whereRaw('1 = 0');
         }
         return $requested ? $query->where('studentNumber', $requested) : $query;
+    }
+
+    // Real visitor IP. Render's proxy hides it from $request->ip(), Cloudflare passes it in this header.
+    public static function clientIp(Request $request): string
+    {
+        $ip = $request->header('CF-Connecting-IP');
+        return ($ip && filter_var($ip, FILTER_VALIDATE_IP)) ? $ip : (string) $request->ip();
+    }
+
+    // audit entry for events with no logged-in user (e.g. a locked-out account)
+    public static function auditSystem(string $actor, string $action, string $module, string $details): void
+    {
+        AuditLog::create([
+            'id' => self::nextId(AuditLog::class, 'AUD'),
+            'user' => $actor,
+            'action' => $action,
+            'dateTime' => self::now(),
+            'module' => $module,
+            'details' => $details,
+        ]);
+    }
+
+    // stops users from sneaking % and _ wildcards into LIKE searches
+    public static function escapeLike(string $value): string
+    {
+        return addcslashes($value, '%_\\');
+    }
+
+    // Returns a plain array when no ?page / ?per_page is sent (old behaviour), otherwise a paginator.
+    // Search and filter columns come only from the whitelist each controller passes in.
+    public static function paginateIfRequested($query, Request $request, array $searchableColumns = [], array $filterOnly = [])
+    {
+        if (! $request->hasAny(['page', 'per_page'])) {
+            return $query->get();
+        }
+
+        $perPage = min(max($request->integer('per_page', 10), 1), 100);
+
+        $search = $request->query('search');
+        $search = is_string($search) ? trim($search) : '';
+        if ($search !== '' && $searchableColumns !== []) {
+            // Postgres LIKE is case sensitive, ILIKE is not
+            $operator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
+            $pattern = '%' . self::escapeLike($search) . '%';
+            $query->where(function ($builder) use ($searchableColumns, $operator, $pattern) {
+                foreach ($searchableColumns as $column) {
+                    $builder->orWhere($column, $operator, $pattern);
+                }
+            });
+        }
+
+        $filterField = $request->query('filter_field');
+        $filterValue = $request->query('filter_value');
+        if (filled($filterField) && filled($filterValue)) {
+            abort_unless(
+                is_string($filterField) && is_string($filterValue)
+                    && in_array($filterField, array_merge($searchableColumns, $filterOnly), true),
+                422,
+                'Invalid filter.'
+            );
+            $query->where($filterField, $filterValue);
+        }
+
+        return $query->paginate($perPage);
     }
 }

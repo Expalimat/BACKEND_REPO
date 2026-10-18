@@ -15,11 +15,21 @@ class SettingsController extends Controller
 
     public function update(Request $request)
     {
-        $row = SystemSetting::first() ?? SystemSetting::create(['data' => []]);
-        $current = $row->data ?? [];
+        // only these keys can be changed, and each one is type-checked
+        $data = $request->validate([
+            'academicYear' => ['sometimes', 'string', 'regex:/^\d{4}-\d{4}$/'],
+            'semester' => 'sometimes|string|max:50',
+            'enrollmentStatus' => 'sometimes|string|max:50',
+            'gradeEncodingStatus' => 'sometimes|string|max:50',
+            'clearancePeriodStatus' => 'sometimes|string|max:50',
+            'maxUnitsRegular' => 'sometimes|integer|min:1|max:40',
+            'maxUnitsIrregular' => 'sometimes|integer|min:1|max:40',
+            'universityName' => 'sometimes|string|max:255',
+            'systemVersion' => 'sometimes|string|max:50',
+        ]);
 
-        // only known keys can be changed
-        $row->data = array_merge($current, $request->only(array_keys($current)));
+        $row = SystemSetting::first() ?? SystemSetting::create(['data' => []]);
+        $row->data = array_merge($row->data ?? [], $data);
         $row->save();
 
         $s = $row->data;

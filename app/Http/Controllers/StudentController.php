@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Student;
+use App\Support\Oess;
 use Illuminate\Http\Request;
 
 class StudentController extends Controller
 {
     // staff only (route middleware)
-    public function index()
+    public function index(Request $request)
     {
-        return Student::orderBy('seq')->get();
+        return Oess::paginateIfRequested(Student::orderBy('seq'), $request, [
+            'studentNumber', 'name', 'program', 'yearLevel', 'academicStatus',
+        ]);
     }
 
     public function show(Request $request, string $studentNumber)

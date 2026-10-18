@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Clearance;
 use App\Support\Oess;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ClearanceController extends Controller
 {
@@ -18,15 +19,19 @@ class ClearanceController extends Controller
     public function index(Request $request)
     {
         $q = Clearance::orderBy('seq');
-        return Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'))->get();
+        return Oess::paginateIfRequested(
+            Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber')),
+            $request,
+            ['studentNumber', 'studentName', 'program', 'overallStatus']
+        );
     }
 
     public function sign(Request $request, string $id)
     {
         $user = $request->user();
         $data = $request->validate([
-            'status' => 'required|string|max:50',
-            'remarks' => 'nullable|string',
+            'status' => ['required', 'string', Rule::in(['Signed', 'Pending', 'Rejected'])],
+            'remarks' => 'nullable|string|max:500',
             'officeType' => 'nullable|string|in:Department,Cashier,Registrar',
         ]);
 
