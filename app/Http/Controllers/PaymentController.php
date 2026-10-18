@@ -6,13 +6,32 @@ use App\Models\Enrollment;
 use App\Models\Payment;
 use App\Support\Oess;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class PaymentController extends Controller
 {
     public function index(Request $request)
     {
         $q = Payment::orderByDesc('seq');
-        return Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'))->get();
+        $q = Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'));
+        $verifiedEnrollmentIds = null;
+        if ($request->user()->role === 'Student' && $request->hasAny(['page', 'per_page'])) {
+            $verifiedEnrollmentIds = (clone $q)->where('status', 'Verified')
+                ->pluck('enrollmentId')->filter()->values();
+        }
+        $page = Oess::paginateIfRequested(
+            $q,
+            $request,
+            ['id', 'studentNumber', 'studentName', 'paymentMethod', 'referenceNumber', 'status', 'remarks']
+        );
+
+        if ($page instanceof LengthAwarePaginator && $request->user()->role === 'Student') {
+            return response()->json($page->toArray() + [
+                'verifiedEnrollmentIds' => $verifiedEnrollmentIds,
+            ]);
+        }
+
+        return $page;
     }
 
     public function store(Request $request)

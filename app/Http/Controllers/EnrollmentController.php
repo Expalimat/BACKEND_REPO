@@ -22,7 +22,10 @@ class EnrollmentController extends Controller
         if ($request->filled('term')) {
             $q->where('term', 'like', '%' . $request->query('term') . '%');
         }
-        return $q->get();
+        return Oess::paginateIfRequested($q, $request, [
+            'subjectCode', 'subjectTitle', 'section', 'term', 'instructor', 'schedule', 'room',
+            'status', 'prerequisites',
+        ]);
     }
 
     public function storeOffering(Request $request)
@@ -71,7 +74,11 @@ class EnrollmentController extends Controller
     public function index(Request $request)
     {
         $q = Enrollment::orderByDesc('seq');
-        return Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'))->get();
+        return Oess::paginateIfRequested(
+            Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber')),
+            $request,
+            ['id', 'studentNumber', 'studentName', 'program', 'term', 'status', 'remarks']
+        );
     }
 
     public function store(Request $request)
