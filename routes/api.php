@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\AppointmentBusinessRuleController;
+use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\AppointmentQueueController;
+use App\Http\Controllers\AppointmentServiceController;
+use App\Http\Controllers\AppointmentSlotController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClearanceController;
@@ -80,6 +85,41 @@ Route::middleware(SecurityMiddleware::class)->group(function () use ($role) {
         Route::get('/document-requests', [DocumentRequestController::class, 'index']);
         Route::post('/document-requests', [DocumentRequestController::class, 'store'])->middleware([$role('Student'), 'throttle:10,1,writes']);
         Route::patch('/document-requests/{id}/status', [DocumentRequestController::class, 'updateStatus'])->middleware($role('Registrar', 'Administrator'));
+
+        // Appointment service management
+        Route::get('/appointment-services', [AppointmentServiceController::class, 'index']);
+        Route::post('/appointment-services', [AppointmentServiceController::class, 'store'])->middleware($role('Registrar', 'Department Staff', 'Administrator'));
+        Route::put('/appointment-services/{id}', [AppointmentServiceController::class, 'update'])->middleware($role('Registrar', 'Department Staff', 'Administrator'));
+
+        // Appointment business rules
+        Route::get('/appointment-business-rules', [AppointmentBusinessRuleController::class, 'index'])->middleware($role('Registrar', 'Department Staff', 'Administrator'));
+        Route::post('/appointment-business-rules', [AppointmentBusinessRuleController::class, 'store'])->middleware($role('Registrar', 'Department Staff', 'Administrator'));
+        Route::put('/appointment-business-rules/{id}', [AppointmentBusinessRuleController::class, 'update'])->middleware($role('Registrar', 'Department Staff', 'Administrator'));
+
+        // Appointment slot management
+        Route::get('/appointment-slots', [AppointmentSlotController::class, 'index']);
+        Route::post('/appointment-slots', [AppointmentSlotController::class, 'store'])->middleware($role('Registrar', 'Department Staff', 'Administrator'));
+        Route::put('/appointment-slots/{id}', [AppointmentSlotController::class, 'update'])->middleware($role('Registrar', 'Department Staff', 'Administrator'));
+
+        // Appointments
+        Route::get('/appointments', [AppointmentController::class, 'index']);
+        Route::get('/appointments/my', [AppointmentController::class, 'myAppointments'])->middleware($role('Student'));
+        Route::get('/appointments/{id}', [AppointmentController::class, 'show']);
+        Route::post('/appointments', [AppointmentController::class, 'store'])->middleware([$role('Student'), 'throttle:10,1,writes']);
+        Route::patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
+        Route::patch('/appointments/{id}/cancel', [AppointmentController::class, 'cancel']);
+        Route::patch('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule']);
+
+        // Queue management
+        Route::get('/queue-entries', [AppointmentQueueController::class, 'index'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
+        Route::get('/queue-entries/{id}/summary', [AppointmentQueueController::class, 'statusSummary']);
+        Route::patch('/queue-entries/{id}/check-in', [AppointmentQueueController::class, 'checkIn'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
+        Route::patch('/queue-entries/{id}/override', [AppointmentQueueController::class, 'overrideStatus'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
+        Route::post('/queue/next', [AppointmentQueueController::class, 'callNext'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
+        Route::patch('/queue-entries/{id}/start', [AppointmentQueueController::class, 'startService'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
+        Route::patch('/queue-entries/{id}/complete', [AppointmentQueueController::class, 'complete'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
+        Route::patch('/queue-entries/{id}/no-show', [AppointmentQueueController::class, 'markNoShow'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
+        Route::patch('/queue-entries/{id}/cancel', [AppointmentQueueController::class, 'cancel'])->middleware($role('Registrar', 'Cashier', 'Department Staff', 'Administrator'));
 
         // Notifications (always the logged-in user's own)
         Route::get('/notifications', [NotificationController::class, 'index']);
