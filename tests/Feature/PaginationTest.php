@@ -36,7 +36,10 @@ class PaginationTest extends TestCase
         $this->actingAs($student)
             ->getJson('/api/grades?term=2nd%20Semester%202025-2026&page=1&per_page=1')
             ->assertOk()
-            ->assertJsonStructure(['data', 'summary' => ['validatedCount', 'gpa']]);
+            ->assertJsonStructure([
+                'data',
+                'summary' => ['validatedCount', 'gpa'],
+            ]);
 
         $this->actingAs($student)
             ->getJson('/api/payments?page=1&per_page=1')

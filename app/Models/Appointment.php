@@ -2,22 +2,32 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
 class Appointment extends OessModel
 {
-    protected $table = 'appointments';
+    protected $casts = [
+        'queueNumber' => 'integer',
+    ];
 
-    public function service()
+    public function queueEntry(): HasOne
+    {
+        return $this->hasOne(AppointmentQueueEntry::class, 'appointmentId', 'id');
+    }
+
+    public function service(): BelongsTo
     {
         return $this->belongsTo(AppointmentService::class, 'serviceId', 'id');
     }
 
-    public function slot()
+    public function slot(): BelongsTo
     {
         return $this->belongsTo(AppointmentSlot::class, 'slotId', 'id');
     }
 
-    public function queueEntry()
+    public function documentRequest(): BelongsTo
     {
-        return $this->hasOne(AppointmentQueueEntry::class, 'appointmentId', 'id');
+        return $this->belongsTo(DocumentRequest::class, 'documentRequestId', 'id');
     }
 }

@@ -6,17 +6,10 @@ use App\Models\User;
 use App\Support\Oess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
     private const ROLES = ['Student', 'Registrar', 'Cashier', 'Department Staff', 'Administrator'];
-    private const USERNAME_RULE = 'regex:/^[A-Za-z0-9._-]+$/';
-
-    private function passwordRules(): array
-    {
-        return ['string', 'max:72', Password::min(8)->letters()->numbers()];
-    }
 
     public function index(Request $request)
     {
@@ -28,18 +21,18 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'username' => ['required', 'string', 'max:50', self::USERNAME_RULE],
+            'username' => 'required|string|max:50',
             'name' => 'required|string|max:255',
             'role' => ['required', Rule::in(self::ROLES)],
-            'email' => 'nullable|email|max:255',
-            'password' => array_merge(['nullable'], $this->passwordRules()),
+            'email' => 'nullable|string|max:255',
+            'password' => 'nullable|string|min:6',
             'studentNumber' => 'nullable|string|max:50',
             'program' => 'nullable|string|max:255',
             'yearLevel' => 'nullable|string|max:50',
             'department' => 'nullable|string|max:255',
         ]);
 
-        $username = strtolower($data['username']);
+        $username = strtolower(trim($data['username']));
         if (User::where('username', $username)->exists()) {
             return response()->json(['message' => 'That username is already taken.'], 422);
         }
@@ -69,15 +62,13 @@ class UserController extends Controller
     public function update(Request $request, string $id)
     {
         $user = User::findOrFail($id);
-        $me = $request->user();
-        $isSelf = $user->id === $me->id;
 
         $data = $request->validate([
-            'username' => ['sometimes', 'string', 'max:50', self::USERNAME_RULE],
+            'username' => 'sometimes|string|max:50',
             'name' => 'sometimes|string|max:255',
             'role' => ['sometimes', Rule::in(self::ROLES)],
-            'email' => 'nullable|email|max:255',
-            'password' => array_merge(['nullable'], $this->passwordRules()),
+            'email' => 'nullable|string|max:255',
+            'password' => 'nullable|string|min:6',
             'studentNumber' => 'nullable|string|max:50',
             'program' => 'nullable|string|max:255',
             'yearLevel' => 'nullable|string|max:50',
@@ -85,16 +76,8 @@ class UserController extends Controller
             'status' => ['sometimes', Rule::in(['Active', 'Inactive'])],
         ]);
 
-        $roleChanged = isset($data['role']) && $data['role'] !== $user->role;
-        if ($isSelf && $roleChanged) {
-            return response()->json(['message' => 'You cannot change your own role.'], 422);
-        }
-        if ($isSelf && ($data['status'] ?? null) === 'Inactive') {
-            return response()->json(['message' => 'You cannot deactivate your own account.'], 422);
-        }
-
         if (isset($data['username'])) {
-            $data['username'] = strtolower($data['username']);
+            $data['username'] = strtolower(trim($data['username']));
             if (User::where('username', $data['username'])->where('id', '!=', $id)->exists()) {
                 return response()->json(['message' => 'That username is already taken.'], 422);
             }
@@ -104,20 +87,8 @@ class UserController extends Controller
             unset($data['password']);
         }
 
-        $mustLogOut = isset($data['password']) || $roleChanged || ($data['status'] ?? null) === 'Inactive';
-
         $user->update($data);
-
-        // password / role / deactivation changes kick the user out of every session
-        if ($mustLogOut) {
-            $tokens = $user->tokens();
-            if ($isSelf) {
-                $tokens->where('id', '!=', $me->currentAccessToken()->id);
-            }
-            $tokens->delete();
-        }
-
-        Oess::audit($me, 'Updated User Account', 'Users', "Updated account for {$user->name} ({$user->username})");
+        Oess::audit($request->user(), 'Updated User Account', 'Users', "Updated account for {$user->name} ({$user->username})");
         return $user->fresh();
     }
 

@@ -15,13 +15,16 @@ use App\Models\SystemSetting;
 use App\Models\Term;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Safe to run on every deploy, only seeds an empty database
+        // Safe to run on every deploy, only seeds an empty database. Existing
+        // installations still receive the default seeded appointment assignment.
         if (User::count() > 0) {
+            $this->seedDefaultAppointmentAssignments();
             return;
         }
 
@@ -48,5 +51,30 @@ class DatabaseSeeder extends Seeder
         foreach (array_reverse($seed['audit']) as $row) AuditLog::create($row);
 
         SystemSetting::create(['data' => $seed['settings']]);
+
+        $this->seedDefaultAppointmentAssignments();
+    }
+
+    private function seedDefaultAppointmentAssignments(): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        $registrarId = User::where('username', 'registrar')->value('id');
+        $serviceIds = DB::table('appointment_services')->pluck('id');
+        if (! $registrarId || $serviceIds->isEmpty()) {
+            return;
+        }
+
+        $now = now('Asia/Manila')->format('Y-m-d h:i A');
+        foreach ($serviceIds as $serviceId) {
+            DB::table('appointment_service_staff')->insertOrIgnore([
+                'serviceId' => $serviceId,
+                'userId' => $registrarId,
+                'assignedByUserId' => null,
+                'createdAt' => $now,
+            ]);
+        }
     }
 }

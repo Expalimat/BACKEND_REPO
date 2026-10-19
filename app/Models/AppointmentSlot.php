@@ -2,17 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 class AppointmentSlot extends OessModel
 {
     protected $table = 'appointment_slots';
 
-    public function service()
+    public function service(): BelongsTo
     {
         return $this->belongsTo(AppointmentService::class, 'serviceId', 'id');
-    }
-
-    public function appointments()
-    {
-        return $this->hasMany(Appointment::class, 'slotId', 'id');
     }
 }

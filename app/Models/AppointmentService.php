@@ -2,12 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 class AppointmentService extends OessModel
 {
     protected $table = 'appointment_services';
 
-    public function slots()
+    protected $casts = [
+        'isActive' => 'boolean',
+        'requiredDocuments' => 'array',
+        'serviceDurationMinutes' => 'integer',
+        'bookingWindowDays' => 'integer',
+        'cancellationCutoffMinutes' => 'integer',
+        'lateArrivalGraceMinutes' => 'integer',
+        'earlyArrivalWindowMinutes' => 'integer',
+    ];
+
+    public function closures(): HasMany
     {
-        return $this->hasMany(AppointmentSlot::class, 'serviceId', 'id');
+        return $this->hasMany(AppointmentServiceClosure::class, 'serviceId', 'id');
     }
 }

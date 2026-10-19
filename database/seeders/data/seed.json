@@ -186,8 +186,8 @@
       "instructor": "Engr. M. Galang",
       "totalSlots": 30,
       "availableSlots": 15,
-      "prerequisites": "IT200 - Networking 1 (Unsatisfied)",
-      "isPrerequisiteSatisfied": false,
+      "prerequisites": "IT200 - Networking 1",
+      "isPrerequisiteSatisfied": true,
       "status": "Open"
     },
     {
