@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Clearance;
 use App\Support\Oess;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ClearanceController extends Controller
 {
@@ -30,8 +29,8 @@ class ClearanceController extends Controller
     {
         $user = $request->user();
         $data = $request->validate([
-            'status' => ['required', 'string', Rule::in(['Signed', 'Pending', 'Rejected'])],
-            'remarks' => 'nullable|string|max:500',
+            'status' => 'required|string|max:50',
+            'remarks' => 'nullable|string',
             'officeType' => 'nullable|string|in:Department,Cashier,Registrar',
         ]);
 

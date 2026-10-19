@@ -3,13 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Enrollment;
+use App\Models\Payment;
 use App\Models\SubjectOffering;
 use App\Models\SystemSetting;
 use App\Models\Term;
 use App\Support\Oess;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
-use Illuminate\Validation\Rule;
 
 class EnrollmentController extends Controller
 {
@@ -20,11 +19,9 @@ class EnrollmentController extends Controller
 
     public function offerings(Request $request)
     {
-        $request->validate(['term' => 'nullable|string|max:100']);
-
         $q = SubjectOffering::orderBy('seq');
         if ($request->filled('term')) {
-            $q->where('term', 'like', '%' . Oess::escapeLike($request->query('term')) . '%');
+            $q->where('term', 'like', '%' . $request->query('term') . '%');
         }
         return Oess::paginateIfRequested($q, $request, [
             'subjectCode', 'subjectTitle', 'section', 'term', 'instructor', 'schedule', 'room',
@@ -35,19 +32,19 @@ class EnrollmentController extends Controller
     public function storeOffering(Request $request)
     {
         $data = $request->validate([
-            'subjectCode' => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9 _.-]+$/'],
+            'subjectCode' => 'required|string|max:50',
             'subjectTitle' => 'required|string|max:255',
             'units' => 'required|integer|min:0|max:12',
-            'section' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9 _.-]+$/'],
+            'section' => 'required|string|max:100',
             'term' => 'required|string|max:100',
             'schedule' => 'nullable|string|max:255',
             'room' => 'nullable|string|max:100',
             'instructor' => 'nullable|string|max:255',
-            'totalSlots' => 'required|integer|min:0|max:500',
+            'totalSlots' => 'required|integer|min:0',
             'prerequisites' => 'nullable|string|max:255',
         ]);
 
-        $id = 'SEC-' . preg_replace('/\s+/', '', $data['subjectCode']) . '-' . preg_replace('/\s+/', '', $data['section']);
+        $id = 'SEC-' . $data['subjectCode'] . '-' . preg_replace('/\s+/', '', $data['section']);
         if (SubjectOffering::where('id', $id)->exists()) {
             return response()->json(['message' => 'That subject section already exists.'], 422);
         }
@@ -66,29 +63,10 @@ class EnrollmentController extends Controller
     public function updateOffering(Request $request, string $id)
     {
         $offering = SubjectOffering::findOrFail($id);
-
-        $data = $request->validate([
-            'subjectTitle' => 'sometimes|string|max:255',
-            'units' => 'sometimes|integer|min:0|max:12',
-            'section' => ['sometimes', 'string', 'max:100', 'regex:/^[A-Za-z0-9 _.-]+$/'],
-            'term' => 'sometimes|string|max:100',
-            'schedule' => 'nullable|string|max:255',
-            'room' => 'nullable|string|max:100',
-            'instructor' => 'nullable|string|max:255',
-            'totalSlots' => 'sometimes|integer|min:0|max:500',
-            'availableSlots' => 'sometimes|integer|min:0|max:500',
-            'prerequisites' => 'nullable|string|max:255',
-            'isPrerequisiteSatisfied' => 'sometimes|boolean',
-            'status' => ['sometimes', Rule::in(['Open', 'Full', 'Closed'])],
-        ]);
-
-        $total = $data['totalSlots'] ?? $offering->totalSlots;
-        $available = $data['availableSlots'] ?? $offering->availableSlots;
-        if ($available > $total) {
-            return response()->json(['message' => 'Available slots cannot be more than total slots.'], 422);
-        }
-
-        $offering->update($data);
+        $offering->update($request->only([
+            'subjectTitle', 'units', 'section', 'term', 'schedule', 'room', 'instructor',
+            'totalSlots', 'availableSlots', 'prerequisites', 'isPrerequisiteSatisfied', 'status',
+        ]));
 
         Oess::audit($request->user(), 'Updated Subject Section', 'Subject Offerings', "Updated {$id}");
         return response()->json(true);
@@ -111,61 +89,79 @@ class EnrollmentController extends Controller
             return response()->json(['message' => 'No student number is linked to this account.'], 422);
         }
 
-        $settings = SystemSetting::first()?->data ?? [];
-        if (($settings['enrollmentStatus'] ?? 'Open') !== 'Open') {
-            return response()->json(['message' => 'Enrollment is currently closed.'], 422);
-        }
-
         $data = $request->validate([
             'term' => 'nullable|string|max:100',
-            'items' => 'required|array|min:1|max:15',
-            'items.*.subjectCode' => 'required|string|max:50|distinct',
-            'items.*.section' => 'required|string|max:100',
+            'totalUnits' => 'required|integer|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.subjectCode' => 'required|string|max:50',
             'fees' => 'required|array',
-            'fees.tuition' => 'required|numeric|min:0|max:1000000',
-            'fees.miscellaneous' => 'required|numeric|min:0|max:1000000',
-            'fees.laboratory' => 'required|numeric|min:0|max:1000000',
-            'fees.library' => 'required|numeric|min:0|max:1000000',
-            'fees.athletic' => 'required|numeric|min:0|max:1000000',
-            'fees.total' => 'required|numeric|min:0|max:1000000',
         ]);
 
-        // Never trust subject details from the browser: rebuild every item from the real offerings
-        $items = [];
-        foreach ($data['items'] as $row) {
-            $offering = SubjectOffering::where('subjectCode', $row['subjectCode'])
-                ->where('section', $row['section'])->first();
-            if (! $offering) {
-                return response()->json(['message' => "Subject {$row['subjectCode']} ({$row['section']}) does not exist."], 422);
-            }
-            $items[] = [
-                'subjectCode' => $offering->subjectCode,
-                'subjectTitle' => $offering->subjectTitle,
-                'units' => (int) $offering->units,
-                'section' => $offering->section,
-                'schedule' => $offering->schedule,
-                'room' => $offering->room,
-            ];
-        }
-
-        $totalUnits = (int) collect($items)->sum('units');
-        $maxUnits = (int) ($settings['maxUnitsRegular'] ?? 24);
-        if ($totalUnits > $maxUnits) {
-            return response()->json(['message' => "You cannot enroll in more than {$maxUnits} units."], 422);
-        }
-
-        $fees = $data['fees'];
-        $feeParts = collect(Arr::except($fees, ['total']))->sum();
-        if (abs($feeParts - (float) $fees['total']) > 0.01) {
-            return response()->json(['message' => 'Fee total does not match the fee breakdown.'], 422);
-        }
-
+        $settings = SystemSetting::first()?->data ?? [];
         $term = $data['term'] ?? trim(($settings['semester'] ?? '') . ' ' . ($settings['academicYear'] ?? ''));
         // "2nd Semester 2025-2026" -> semester + academic year
         $semester = $settings['semester'] ?? null;
         $academicYear = $settings['academicYear'] ?? null;
         if (preg_match('/^(.*?)\s+(\d{4}-\d{4})$/', $term, $m)) {
             [$semester, $academicYear] = [$m[1], $m[2]];
+        }
+
+        $termEnrollments = Enrollment::where('studentNumber', $user->studentNumber)
+            ->where('term', $term)
+            ->get();
+        $verifiedEnrollmentIds = Payment::where('studentNumber', $user->studentNumber)
+            ->where('status', 'Verified')
+            ->whereIn('enrollmentId', $termEnrollments->pluck('id'))
+            ->pluck('enrollmentId')
+            ->all();
+        $registrarApprovedStatuses = ['approved', 'preassessed'];
+        $verifiedEnrollmentIds = $termEnrollments
+            ->filter(function ($enrollment) use ($registrarApprovedStatuses, $verifiedEnrollmentIds) {
+                $status = strtolower(preg_replace('/[\s_-]/', '', (string) $enrollment->status));
+                return in_array($status, $registrarApprovedStatuses, true)
+                    && in_array($enrollment->id, $verifiedEnrollmentIds, true);
+            })
+            ->pluck('id')
+            ->all();
+        $hasActiveApplication = $termEnrollments->contains(function ($enrollment) use ($verifiedEnrollmentIds) {
+            $status = strtolower(preg_replace('/[\s_-]/', '', (string) $enrollment->status));
+            return in_array($status, ['pending', 'approved', 'preassessed'], true)
+                && ! in_array($enrollment->id, $verifiedEnrollmentIds, true);
+        });
+
+        if ($hasActiveApplication) {
+            return response()->json([
+                'message' => 'You already have an enrollment application awaiting completion for this term.',
+            ], 422);
+        }
+
+        $completedSubjectCodes = $termEnrollments
+            ->filter(function ($enrollment) use ($verifiedEnrollmentIds) {
+                $status = strtolower(preg_replace('/[\s_-]/', '', (string) $enrollment->status));
+                return in_array($status, ['enrolled', 'completed', 'confirmed'], true)
+                    || in_array($enrollment->id, $verifiedEnrollmentIds, true);
+            })
+            ->flatMap(fn ($enrollment) => collect($enrollment->items ?? [])
+                ->pluck('subjectCode')
+                ->map(fn ($subjectCode) => strtoupper(trim((string) $subjectCode))))
+            ->filter()
+            ->unique()
+            ->all();
+        $submittedSubjectCodes = collect($data['items'])
+            ->pluck('subjectCode')
+            ->map(fn ($subjectCode) => strtoupper(trim($subjectCode)));
+        $duplicateSubjectCodes = $submittedSubjectCodes
+            ->filter(fn ($subjectCode) => in_array($subjectCode, $completedSubjectCodes, true))
+            ->unique()
+            ->values();
+
+        if ($submittedSubjectCodes->count() !== $submittedSubjectCodes->unique()->count()) {
+            return response()->json(['message' => 'An enrollment cannot contain the same subject more than once.'], 422);
+        }
+        if ($duplicateSubjectCodes->isNotEmpty()) {
+            return response()->json([
+                'message' => 'These subjects are already enrolled for this term: ' . $duplicateSubjectCodes->implode(', ') . '.',
+            ], 422);
         }
 
         $enrollment = Enrollment::create([
@@ -178,14 +174,14 @@ class EnrollmentController extends Controller
             'semester' => $semester,
             'dateSubmitted' => Oess::now(),
             'status' => 'Pending',
-            'totalUnits' => $totalUnits,
+            'totalUnits' => $data['totalUnits'],
             'remarks' => '',
-            'items' => $items,
-            'fees' => $fees,
+            'items' => $data['items'],
+            'fees' => $data['fees'],
         ]);
 
         Oess::audit($user, 'Submitted Online Enrollment', 'Enrollment',
-            'Submitted ' . count($items) . " subjects totaling {$totalUnits} units");
+            'Submitted ' . count($data['items']) . " subjects totaling {$data['totalUnits']} units");
         Oess::notifyRole('Registrar', 'New Enrollment Submission',
             "Student {$user->name} submitted an enrollment application for review.", 'Enrollment');
 
@@ -195,10 +191,8 @@ class EnrollmentController extends Controller
     public function updateStatus(Request $request, string $id)
     {
         $data = $request->validate([
-            // "Pre-Assessed" = Registrar reviewed the student's prerequisites/curriculum standing
-            // and opened payment, without a full approval yet.
-            'status' => 'required|string|in:Pending,Approved,Pre-Assessed,Rejected,Enrolled',
-            'remarks' => 'nullable|string|max:500',
+            'status' => 'required|string|max:50',
+            'remarks' => 'nullable|string',
         ]);
 
         $enrollment = Enrollment::findOrFail($id);
@@ -210,18 +204,6 @@ class EnrollmentController extends Controller
 
         Oess::audit($request->user(), "{$data['status']} Enrollment", 'Enrollment',
             "{$data['status']} enrollment request {$id} for {$enrollment->studentName}");
-
-        $studentMessage = match ($data['status']) {
-            'Approved' => 'Your enrollment application was approved by the Registrar. You may now submit your proof of payment.',
-            'Pre-Assessed' => 'Your enrollment application was pre-assessed by the Registrar. You may now submit your proof of payment.',
-            'Rejected' => 'Your enrollment application was not approved by the Registrar.',
-            default => null,
-        };
-        if ($studentMessage) {
-            $remarks = ! empty($data['remarks']) ? " Remarks: {$data['remarks']}" : '';
-            Oess::notifyStudent($enrollment->studentNumber, "Enrollment {$data['status']}", $studentMessage . $remarks, 'Enrollment');
-        }
-
         return $enrollment;
     }
 }

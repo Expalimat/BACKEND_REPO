@@ -7,7 +7,7 @@ use App\Models\Payment;
 use App\Support\Oess;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
@@ -15,22 +15,23 @@ class PaymentController extends Controller
     {
         $q = Payment::orderByDesc('seq');
         $q = Oess::scopeToStudent($q, $request->user(), $request->query('studentNumber'));
-        $isStudent = $request->user()->role === 'Student';
-
-        // a student's paged list still needs to know which enrollments are already paid
-        $verifiedEnrollmentIds = ($isStudent && $request->hasAny(['page', 'per_page']))
-            ? (clone $q)->where('status', 'Verified')->pluck('enrollmentId')->filter()->values()
-            : null;
-
+        $verifiedEnrollmentIds = null;
+        if ($request->user()->role === 'Student' && $request->hasAny(['page', 'per_page'])) {
+            $verifiedEnrollmentIds = (clone $q)->where('status', 'Verified')
+                ->pluck('enrollmentId')->filter()->values();
+        }
         $page = Oess::paginateIfRequested(
             $q,
             $request,
             ['id', 'studentNumber', 'studentName', 'paymentMethod', 'referenceNumber', 'status', 'remarks']
         );
 
-        if ($page instanceof LengthAwarePaginator && $isStudent) {
-            return response()->json($page->toArray() + ['verifiedEnrollmentIds' => $verifiedEnrollmentIds]);
+        if ($page instanceof LengthAwarePaginator && $request->user()->role === 'Student') {
+            return response()->json($page->toArray() + [
+                'verifiedEnrollmentIds' => $verifiedEnrollmentIds,
+            ]);
         }
+
         return $page;
     }
 
@@ -43,50 +44,21 @@ class PaymentController extends Controller
 
         $data = $request->validate([
             'enrollmentId' => 'nullable|string|max:50',
-            'amount' => 'required|numeric|min:1|max:1000000',
-            'paymentMethod' => 'required|string|max:100',
-            'referenceNumber' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9\- ]+$/'],
-            'proofFileName' => ['nullable', 'string', 'max:200', 'regex:/^[\w\-. ()]+\.(jpe?g|png|pdf|webp)$/i'],
+            'amount' => 'required|numeric|min:1',
+            'paymentMethod' => 'required|string|max:255',
+            'referenceNumber' => 'required|string|max:100',
+            'proofFileName' => 'nullable|string|max:255',
             'proofFileSize' => 'nullable|string|max:50',
-            'remarks' => 'nullable|string|max:500',
+            'remarks' => 'nullable|string',
         ]);
 
         // default to the student's latest enrollment
-        $enrollmentQuery = Enrollment::where('studentNumber', $user->studentNumber);
-        $enrollment = ! empty($data['enrollmentId'])
-            ? $enrollmentQuery->where('id', $data['enrollmentId'])->first()
-            : $enrollmentQuery->orderByDesc('seq')->first();
-
-        if (! $enrollment) {
-            return response()->json(['message' => 'No enrollment application found for this payment.'], 422);
-        }
-
-        // payment opens only after the Registrar approves or pre-assesses the enrollment
-        $enrollmentStatus = strtolower(preg_replace('/[\s_-]/', '', (string) $enrollment->status));
-        if (! in_array($enrollmentStatus, ['approved', 'preassessed'], true)) {
-            return response()->json([
-                'message' => 'Payment proof can only be submitted after the Registrar approves or pre-assesses your enrollment.',
-            ], 422);
-        }
-
-        if (Payment::where('enrollmentId', $enrollment->id)->where('status', 'Verified')->exists()) {
-            return response()->json(['message' => 'This enrollment already has a verified payment.'], 422);
-        }
-
-        // cannot pay more than the assessed total
-        $feesTotal = (float) ($enrollment->fees['total'] ?? 0);
-        if ($feesTotal > 0 && (float) $data['amount'] > $feesTotal + 0.01) {
-            return response()->json(['message' => 'The amount is more than your assessed total.'], 422);
-        }
-
-        // the same receipt/reference number cannot be reused
-        if (Payment::where('referenceNumber', $data['referenceNumber'])->where('status', '!=', 'Rejected')->exists()) {
-            return response()->json(['message' => 'That reference number has already been used.'], 422);
-        }
+        $enrollmentId = $data['enrollmentId']
+            ?? Enrollment::where('studentNumber', $user->studentNumber)->orderByDesc('seq')->value('id');
 
         $payment = Payment::create([
             'id' => Oess::randomId(Payment::class, 'PAY-2026'),
-            'enrollmentId' => $enrollment->id,
+            'enrollmentId' => $enrollmentId,
             'studentNumber' => $user->studentNumber,
             'studentName' => $user->name,
             'amount' => $data['amount'],
@@ -112,18 +84,33 @@ class PaymentController extends Controller
     public function verify(Request $request, string $id)
     {
         $data = $request->validate([
-            'status' => ['required', Rule::in(['Verified', 'Rejected', 'Pending'])],
-            'remarks' => 'nullable|string|max:500',
+            'status' => 'required|string|max:50',
+            'remarks' => 'nullable|string',
         ]);
 
-        $payment = Payment::findOrFail($id);
-        $payment->status = $data['status'];
-        if (! empty($data['remarks'])) {
-            $payment->remarks = $data['remarks'];
-        }
-        $payment->verifiedBy = $request->user()->name;
-        $payment->verifiedDate = Oess::now();
-        $payment->save();
+        $payment = DB::transaction(function () use ($data, $id, $request) {
+            $payment = Payment::findOrFail($id);
+            $payment->status = $data['status'];
+            if (! empty($data['remarks'])) {
+                $payment->remarks = $data['remarks'];
+            }
+            $payment->verifiedBy = $request->user()->name;
+            $payment->verifiedDate = Oess::now();
+            $payment->save();
+
+            if (strcasecmp(trim($data['status']), 'Verified') === 0 && $payment->enrollmentId) {
+                $enrollment = Enrollment::where('id', $payment->enrollmentId)
+                    ->where('studentNumber', $payment->studentNumber)
+                    ->first();
+                $enrollmentStatus = strtolower(preg_replace('/[\s_-]/', '', (string) $enrollment?->status));
+                if ($enrollment && in_array($enrollmentStatus, ['approved', 'preassessed'], true)) {
+                    $enrollment->status = 'Enrolled';
+                    $enrollment->save();
+                }
+            }
+
+            return $payment;
+        });
 
         $amount = number_format($payment->amount, 2);
         Oess::audit($request->user(), "{$data['status']} Payment", 'Payments',
