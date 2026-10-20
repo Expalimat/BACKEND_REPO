@@ -148,7 +148,7 @@ class AppointmentServiceController extends Controller
             ->where('appointmentDate', '<=', now('Asia/Manila')->addDays(365)->toDateString())
             ->whereHas('service', fn ($builder) => $builder->where('isActive', true))
             ->whereDoesntHave('service.closures', fn ($builder) => $builder->whereColumn('closedDate', 'appointment_slots.appointmentDate'))
-            ->whereRaw('(SELECT COUNT(*) FROM appointments WHERE appointments.slotId = appointment_slots.id AND appointments.status IN (?, ?, ?, ?)) < appointment_slots.capacity', self::BOOKING_STATUSES);
+            ->whereRaw('(SELECT COUNT(*) FROM appointments WHERE appointments."slotId" = appointment_slots.id AND appointments.status IN (?, ?, ?, ?)) < appointment_slots.capacity', self::BOOKING_STATUSES);
         if (($data['from'] ?? $today) === $today) {
             $query->where(function ($builder) use ($today) {
                 $builder->where('appointmentDate', '>', $today)
@@ -454,7 +454,7 @@ class AppointmentServiceController extends Controller
     {
         DB::table('appointment_services')
             ->where('id', $serviceId)
-            ->update(['updatedAt' => DB::raw('updatedAt')]);
+            ->update(['updatedAt' => DB::raw('"updatedAt"')]);
 
         return AppointmentService::whereKey($serviceId)->lockForUpdate()->firstOrFail();
     }
@@ -463,7 +463,7 @@ class AppointmentServiceController extends Controller
     {
         DB::table('appointment_slots')
             ->where('id', $slotId)
-            ->update(['updatedAt' => DB::raw('updatedAt')]);
+            ->update(['updatedAt' => DB::raw('"updatedAt"')]);
 
         return AppointmentSlot::whereKey($slotId)->lockForUpdate()->firstOrFail();
     }
