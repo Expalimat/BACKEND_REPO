@@ -894,7 +894,7 @@ class AppointmentController extends Controller
         DB::table('appointment_queue_sequences')
             ->where('serviceId', $serviceId)
             ->where('appointmentDate', $date)
-            ->update(['lastNumber' => DB::raw('"lastNumber"')]);
+            ->update(['lastNumber' => DB::raw('lastNumber')]);
         DB::table('appointment_queue_sequences')
             ->where('serviceId', $serviceId)
             ->where('appointmentDate', $date)
@@ -906,7 +906,7 @@ class AppointmentController extends Controller
     {
         DB::table('appointment_slots')
             ->where('id', $slotId)
-            ->update(['updatedAt' => DB::raw('"updatedAt"')]);
+            ->update(['updatedAt' => DB::raw('updatedAt')]);
 
         return AppointmentSlot::whereKey($slotId)->lockForUpdate()->firstOrFail();
     }

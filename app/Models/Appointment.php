@@ -9,6 +9,8 @@ class Appointment extends OessModel
 {
     protected $casts = [
         'queueNumber' => 'integer',
+        'applicantEmail' => 'string',
+        'applicantPhone' => 'string',
     ];
 
     public function queueEntry(): HasOne

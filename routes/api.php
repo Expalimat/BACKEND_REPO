@@ -10,6 +10,7 @@ use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PublicAppointmentController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\UserController;
@@ -29,6 +30,13 @@ Route::get('/health', fn () => response()->json(['status' => 'ok']));
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:20,1');
 Route::get('/appointment-queue/display', [AppointmentController::class, 'display'])
     ->middleware('appointment.response');
+
+// Public incoming-freshman appointment booking
+Route::prefix('public/appointments')->middleware('throttle:30,1')->group(function () {
+    Route::get('/services', [PublicAppointmentController::class, 'services']);
+    Route::get('/availability', [PublicAppointmentController::class, 'availability']);
+    Route::post('/book', [PublicAppointmentController::class, 'book']);
+});
 
 Route::middleware('auth:sanctum')->group(function () use ($role, $appointmentStaff, $appointmentAdmin) {
     Route::get('/me', [AuthController::class, 'me']);
