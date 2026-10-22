@@ -16,4 +16,14 @@ class AppointmentQueueEntry extends OessModel
     {
         return $this->belongsTo(Appointment::class, 'appointmentId', 'id');
     }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'userId', 'id');
+    }
+
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(AppointmentService::class, 'serviceId', 'id');
+    }
 }

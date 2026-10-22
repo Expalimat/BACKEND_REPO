@@ -106,6 +106,8 @@ Route::middleware('auth:sanctum')->group(function () use ($role, $appointmentSta
             ->middleware($appointmentStaff);
         Route::get('/staff/appointment-slots', [AppointmentServiceController::class, 'staffSlots'])
             ->middleware($appointmentStaff);
+        Route::patch('/staff/appointment-services/{serviceId}/queue-pause', [AppointmentServiceController::class, 'setQueuePause'])
+            ->middleware($appointmentStaff);
         Route::post('/staff/appointment-slots', [AppointmentServiceController::class, 'createStaffSlot'])
             ->middleware($appointmentAdmin);
         Route::patch('/staff/appointment-slots/{id}', [AppointmentServiceController::class, 'updateSlot'])
@@ -118,9 +120,13 @@ Route::middleware('auth:sanctum')->group(function () use ($role, $appointmentSta
             ->middleware($appointmentStaff);
         Route::post('/staff/queue/{queueEntryId}/start', [AppointmentController::class, 'startQueueEntry'])
             ->middleware($appointmentStaff);
+        Route::post('/staff/queue/{queueEntryId}/recall', [AppointmentController::class, 'recallQueueEntry'])
+            ->middleware($appointmentStaff);
         Route::post('/staff/queue/{queueEntryId}/complete', [AppointmentController::class, 'completeQueueEntry'])
             ->middleware($appointmentStaff);
         Route::post('/staff/queue/{queueEntryId}/no-show', [AppointmentController::class, 'noShowQueueEntry'])
+            ->middleware($appointmentStaff);
+        Route::post('/staff/queue/{queueEntryId}/cancel', [AppointmentController::class, 'cancelQueueEntry'])
             ->middleware($appointmentStaff);
         Route::post('/staff/queue/{queueEntryId}/override', [AppointmentController::class, 'overrideQueueEntry'])
             ->middleware($appointmentStaff);
@@ -129,6 +135,14 @@ Route::middleware('auth:sanctum')->group(function () use ($role, $appointmentSta
         Route::get('/appointment-services', [AppointmentServiceController::class, 'index'])
             ->middleware($role('Student', 'Registrar', 'Department Staff', 'Administrator'));
         Route::get('/appointment-slots', [AppointmentServiceController::class, 'studentSlots'])
+            ->middleware($role('Student'));
+        Route::get('/student/virtual-queue/services', [AppointmentController::class, 'virtualQueueServices'])
+            ->middleware($role('Student'));
+        Route::get('/student/virtual-queue/tickets', [AppointmentController::class, 'myVirtualQueueTickets'])
+            ->middleware($role('Student'));
+        Route::post('/student/virtual-queue/tickets', [AppointmentController::class, 'joinVirtualQueue'])
+            ->middleware($role('Student'));
+        Route::patch('/student/virtual-queue/tickets/{queueEntryId}/cancel', [AppointmentController::class, 'cancelVirtualQueueTicket'])
             ->middleware($role('Student'));
         Route::get('/appointment-services/{serviceId}/slots', [AppointmentServiceController::class, 'serviceSlots'])
             ->middleware($appointmentStaff);

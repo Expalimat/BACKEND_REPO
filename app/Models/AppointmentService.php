@@ -11,6 +11,9 @@ class AppointmentService extends OessModel
     protected $casts = [
         'isActive' => 'boolean',
         'publicBookable' => 'boolean',
+        'queueEnabled' => 'boolean',
+        'queuePaused' => 'boolean',
+        'queueCapacity' => 'integer',
         'requiredDocuments' => 'array',
         'serviceDurationMinutes' => 'integer',
         'bookingWindowDays' => 'integer',

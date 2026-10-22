@@ -35,7 +35,8 @@ Service assignments are persisted in `appointment_service_staff` and are
 checked by backend queries and mutations, not by frontend visibility alone.
 Appointment service and schedule configuration is restricted to
 `Administrator`; assigned operational staff can view their schedules and
-operate queues, but cannot change service configuration or capacity.
+operate queues and pause/resume ticket intake, but cannot change service
+configuration or capacity.
 
 ## Conventions
 
@@ -87,6 +88,10 @@ university policy.
 | `GET /services` | Student, assigned Registrar/Department Staff, Administrator | Active service catalog for students; staff see only assigned services (active and inactive); Administrator sees all. |
 | `GET /appointment-services` | Student, assigned Registrar/Department Staff, Administrator | Compatibility alias for `GET /services`. |
 | `GET /appointment-slots` | Student | Bookable slots. Optional `service_id`, `date_from`, `date_to`; aliases `serviceId`, `from`, `to` are accepted. Disabled, closed-date, fully booked, inactive-service, out-of-window, and passed-today slots are not returned. |
+| `GET /student/virtual-queue/services` | Student | List active services configured for direct virtual-queue tickets with current capacity and intake state. Freshman Enrollment Appointment is always appointment-only. |
+| `GET /student/virtual-queue/tickets` | Student | Retrieve the authenticated student's active virtual ticket(s) for today; only tickets owned by that account are returned. |
+| `POST /student/virtual-queue/tickets` | Student | Join a virtual queue without an appointment. Body: `serviceId`. Requires a linked student account, enabled/unpaused service, available daily capacity, and no other active ticket today. Returns `201`. |
+| `PATCH /student/virtual-queue/tickets/{queueEntryId}/cancel` | Student | Cancel the authenticated student's own ticket while it is waiting. Called or in-service tickets cannot be cancelled by the student. |
 | `POST /appointments` | Student | Create an appointment. Body: `appointment_slot_id` (or compatibility alias `slotId`, required), optional `purpose`, optional `documentRequestId`. |
 | `GET /appointments/my` | Student | List the authenticated student's appointments. |
 | `GET /appointments` | Student, assigned Registrar/Department Staff, Administrator | Compatibility list route. Students see only their own appointments. Staff see assigned-service appointments and can filter with `appointment_date`, `service_id`, `status`, `reference_number`. |
@@ -114,6 +119,27 @@ university policy.
   }]
 }
 ```
+
+### Virtual queue policy
+
+CTC / Document Claiming is configured for direct student tickets. Direct
+tickets are authenticated and stored in the same queue-entry table and
+per-service Manila-date sequence as appointment check-ins; they do not create
+fake appointments or reserve appointment slots. Only students with a linked
+student number can join. A student may hold only one active direct ticket at a
+time, and the server enforces each service's daily limit on issued virtual
+tickets while serializing ticket issuance. Cancelled and completed tickets
+still count toward that day's issued-ticket limit; ticket numbers are not
+reused. Existing confirmed freshman enrollment bookings remain appointment-only.
+
+An Administrator enables direct queue intake and configures its daily capacity
+in **Appointments & Queue**. Assigned operational staff and Administrators
+may pause or resume intake without removing tickets already in the queue:
+`PATCH /staff/appointment-services/{serviceId}/queue-pause` with
+`{"queuePaused":true}` or `{"queuePaused":false}`. Pausing also prevents new
+direct virtual tickets for that service; booked appointment check-ins and
+queue-processing actions remain available. The public waiting-room endpoint
+continues to expose ticket numbers and counts only, never student identity.
 
 ### Slot response
 
