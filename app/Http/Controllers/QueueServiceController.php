@@ -67,7 +67,7 @@ class QueueServiceController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate($this->serviceRules(true));
+        $data = $request->validate($this->serviceRules(true)); abort_if(QueueService::where("code", strtoupper($data["code"]))->exists(), 422, "That service code is already in use.");
         $now = Oess::now();
         $service = QueueService::create([
             'id' => (string) Str::uuid(),
