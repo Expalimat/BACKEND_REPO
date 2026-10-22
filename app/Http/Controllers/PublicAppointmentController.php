@@ -38,7 +38,7 @@ class PublicAppointmentController extends Controller
         return AppointmentSlot::where('serviceId', $service->id)->where('status', 'Open')
             ->whereBetween('appointmentDate', [$from, min($to, now('Asia/Manila')->addDays($service->bookingWindowDays)->toDateString())])
             ->whereDoesntHave('service.closures', fn ($q) => $q->whereColumn('closedDate', 'appointment_slots.appointmentDate'))
-            ->whereRaw('(SELECT COUNT(*) FROM appointments WHERE appointments.slotId = appointment_slots.id AND appointments.status IN (?, ?, ?, ?)) < appointment_slots.capacity', self::CAPACITY_STATUSES)
+            ->whereRaw('(SELECT COUNT(*) FROM "appointments" WHERE "appointments"."slotId" = "appointment_slots"."id" AND "appointments"."status" IN (?, ?, ?, ?)) < "appointment_slots"."capacity"', self::CAPACITY_STATUSES)
             ->orderBy('appointmentDate')->orderBy('startTime')->get()
             ->filter(fn ($slot) => $slot->appointmentDate !== $today || $slot->startTime > now('Asia/Manila')->format('H:i:s'))
             ->map(fn ($slot) => $this->slotPayload($slot))->values();
