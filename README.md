@@ -70,134 +70,19 @@ capped at 100 records. `search`, `filter_field`, and `filter_value` can be used
 with paginated requests. Requests without pagination parameters continue to
 return the full array for existing dashboard and integration consumers.
 
-## Appointments and queue
+## Virtual queue
 
-Run `php artisan migrate` to add service configuration, schedule closures,
-appointment snapshots and status history, separate queue entries, virtual
-queue configuration, and notification-delivery tracking. The migration is additive and preserves the
-existing users, students, document requests, and appointment records. The
-existing CTC claim service remains available; other service categories must be
-created by authorized staff rather than being assumed to be offered.
+Run `php artisan migrate` to install the queue-only schema. The forward migration keeps direct student and guest queue tickets, service queue settings, service assignments, and queue sequence values. It intentionally deletes appointment-linked tickets and all appointment/slot/history data; do not run it against a shared or production database until a separately approved backup and migration plan is in place.
 
-Administrators configure services, instructions, prerequisites, estimated
-duration, booking window, cancellation cutoff, late arrival grace period,
-capacity, and time slots. They can close an individual slot or a service/date
-to prevent new bookings and manage service staff assignments. Registrar and
-Department Staff accounts can view and operate only services explicitly
-assigned to them; no assignments are granted automatically. The existing
-service schema has no office ownership field, so service is the authorization
-scope. A slot with active appointments cannot be moved; close it and create a
-new slot instead. Service names and slot times are snapshotted when booked, so
-later service edits do not rewrite appointment history. Capacity, service
-availability, date closures, and the configured booking window are rechecked
-when booking is submitted.
+Services are managed by Administrators through `GET /api/services`, `POST /api/services`, and `PUT /api/services/{serviceId}`. Public guest intake is off by default and requires all three service flags: `isActive`, `publicBookable`, and `queueEnabled`. Students may join every active, queue-enabled service, regardless of its guest-access setting. Registrar and Department Staff access is limited to explicitly assigned services; Administrators can access all services. Assigned staff may pause or resume intake without changing existing tickets.
 
-Students can book, view their own appointment details and event history,
-cancel eligible upcoming appointments, and reschedule eligible bookings.
-Students can also join the CTC / Document Claiming virtual queue without an
-appointment, retrieve their own active ticket, and cancel it while waiting.
-Incoming freshmen can continue to schedule enrollment appointments. They can
-also use a separate guest queue flow only for a service that an Administrator
-has both marked public-bookable and enabled for virtual queue intake; freshman
-queue intake is disabled by default. Guest tickets use a random private access
-code for retrieval and cancellation, and only its SHA-256 hash is stored.
-Guest contact details are not returned to public clients, and a queue ticket
-does not establish admission or enrollment. Direct tickets share the service's
-daily Manila-date queue and capacity; Administrators configure virtual intake
-and daily capacity, while assigned staff can pause or resume intake without
-removing existing tickets.
+Authenticated student queue routes are `GET /api/student/virtual-queue/services`, `GET /api/student/virtual-queue/tickets`, `POST /api/student/virtual-queue/tickets`, and `PATCH /api/student/virtual-queue/tickets/{queueEntryId}/cancel`. Public guest routes are `GET /api/public/virtual-queue/services`, `POST /api/public/virtual-queue/tickets`, `POST /api/public/virtual-queue/tickets/retrieve`, and `PATCH /api/public/virtual-queue/tickets/cancel`. Guest tickets require an access token for retrieval and cancellation; only its SHA-256 hash is stored, and guest contact details are not returned to clients.
 
-Student ticket pages poll every ten seconds and guest ticket pages every eight
-seconds while active.
-The ticket is stored in the database, so a student can retrieve it after
-reopening the page; a guest must save both the displayed ticket number and
-private access code. This provides in-page updates only, not background push
-or SMS notifications.
-Student self-check-in is disabled; an authorized assigned Registrar,
-Department Staff member, or Administrator checks students in at the office.
-The authenticated account supplies the
-student identity. Booking references use `PNC-YYYYMMDD-XXXX` and are generated
-from a locked per-date sequence with a unique database constraint. Rescheduling
-creates a new reference, marks the original `RESCHEDULED`, and links the new
-appointment to the original in both directions (`rescheduledFromId` and
-`rescheduledToId`).
+Staff use `GET /api/staff/queue?service_id={serviceId}`, `GET /api/queue/{serviceId}`, and the `/api/staff/queue/{queueEntryId}/{call,start,recall,complete,no-show,cancel,override}` actions. Queue display data is available at `GET /api/queue/display`. Ticket lifecycle statuses are `WAITING`, `CALLED`, `SERVING`, `COMPLETED`, `NO_SHOW`, and `CANCELLED`. Daily capacity counts every issued queue ticket, including cancelled tickets, and ticket numbers are sequenced per service and Manila date. Queue positions and wait durations are estimates, not guarantees.
 
-### Appointment status and queue policy
+Student ticket pages poll every ten seconds and guest ticket pages every eight seconds while active. This provides in-page updates only, not background push or SMS notifications. Appointment booking, slots, check-in, reports, notifications, and reminder scheduling are no longer part of the active application or API.
 
-The API exposes only these canonical appointment statuses:
-`PENDING`, `CONFIRMED`, `CHECKED_IN`, `WAITING`, `SERVING`, `COMPLETED`,
-`CANCELLED`, `NO_SHOW`, and `RESCHEDULED`. Booking is auto-confirmed. Statuses
-are changed only by the booking, cancellation/reschedule, check-in, and
-staff queue actions; there is no general-purpose status update endpoint.
-Check-in and queue assignment are separate recorded history events
-(`CONFIRMED -> CHECKED_IN -> WAITING`). Calling updates the queue entry but
-leaves the appointment `WAITING`; starting service changes it to `SERVING`.
-Only a serving appointment can be completed. Only unserved appointments can
-be marked `NO_SHOW`, and only after the scheduled slot plus that appointment's
-snapshotted late-arrival grace period ends. Cancelled, completed, rescheduled,
-and no-show appointments cannot re-enter the queue.
-
-Each physical queue entry is scoped to one service and the appointment's
-Asia/Manila operating date. Queue numbers are unique within that scope and are
-assigned at check-in; the unique appointment relationship prevents duplicate
-entries. Initial order is FIFO by successful check-in. This is an explicit
-default policy, not a university priority policy. Staff can call an eligible
-waiting student out of order only with a reason; overrides are recorded in
-appointment history and the existing audit log. Each appointment snapshots the
-service's arrival and cancellation rules when booked, so later service edits
-do not change existing booking terms. Student check-in is allowed only within
-the configured early-arrival window
-(default 30 minutes before the slot) through the late-arrival grace period
-(default 0 minutes after the slot); authorized staff may override either
-boundary with a reason. These are configurable defaults, not an official
-university policy. No-show is available after the scheduled slot and grace
-period.
-Queue positions are derived from waiting entries; estimated wait is based on
-the configured service duration and active queue and is explicitly an estimate,
-not a guaranteed service time. No operating hours are hardcoded; staff create
-the actual schedule.
-
-Appointment history is append-only through the API and records status changes,
-queue events, actor ID, Manila timestamp, and override reason where applicable.
-Students can read only their own appointment history; assigned Registrar and
-Department Staff users can read history for their services, and Administrators
-can read it across services.
-
-### Notifications and operations
-
-The current application has in-app notifications stored in its existing
-`notifications` table. Appointment confirmation, cancellation, rescheduling,
-call, and completion notifications are queued and tracked as `QUEUED`, `SENT`,
-or `FAILED`; `SENT` means the in-app notification row was created, not that an
-email was delivered. Existing document-release flow uses the same in-app
-notification table. No appointment email provider is currently configured.
-
-The queue connection defaults to `database`; run a worker in deployment:
-
-```powershell
-php artisan queue:work
-```
-
-For email delivery, configure Laravel's `MAIL_MAILER`, `MAIL_HOST`,
-`MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and `MAIL_FROM_ADDRESS` in the
-deployment environment. Never add credentials to source control. The module
-does not report email delivery until an email transport is explicitly
-integrated and confirms it. One-day in-app reminders are queued at 09:00
-Asia/Manila by the Laravel scheduler. Run `php artisan schedule:work` locally,
-or configure the host's Laravel scheduler/cron in deployment; reminders need
-the queue worker as well.
-
-The public `/api/appointment-queue/display` endpoint returns service labels,
-the currently called ticket, and waiting counts only; it does not return
-student identity.
-
-See [docs/appointments-api.md](docs/appointments-api.md) for the REST endpoint
-reference, request filters, status values, response examples, and error
-semantics. Successful appointment and queue API responses use the
-`success`/`message`/`data` envelope; existing appointment resource field names
-are retained inside `data`, and the frontend adapter unwraps it for current
-screens.
-
+See [docs/virtual-queue-api.md](docs/virtual-queue-api.md) for route details and response fields.
 ## Tests
 
 Run the backend tests with:

@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Middleware\AppointmentApiResponse;
+use App\Http\Middleware\OessApiResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'appointment.response' => AppointmentApiResponse::class,
+            'oess.response' => OessApiResponse::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

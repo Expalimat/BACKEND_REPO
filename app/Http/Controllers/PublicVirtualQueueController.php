@@ -2,45 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppointmentQueueEntry;
-use App\Models\AppointmentService;
-use App\Support\AppointmentWaitEstimator;
+use App\Models\QueueService;
+use App\Models\QueueTicket;
 use App\Support\Oess;
+use App\Support\QueueWaitEstimator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class PublicVirtualQueueController extends Controller
 {
-    private const ACTIVE_STATUSES = ['WAITING', 'CALLED', 'SERVING'];
-
-    public function __construct(private readonly AppointmentWaitEstimator $waitEstimator) {}
+    public function __construct(private readonly QueueWaitEstimator $waitEstimator) {}
 
     public function services()
     {
         $today = now('Asia/Manila')->toDateString();
 
-        return AppointmentService::where('isActive', true)
-            ->where('publicBookable', true)
-            ->where('queueEnabled', true)
-            ->orderBy('name')
-            ->get()
-            ->map(function (AppointmentService $service) use ($today) {
-                $issuedCount = AppointmentQueueEntry::where('serviceId', $service->id)
-                    ->where('queueDate', $today)
-                    ->whereNull('appointmentId')
-                    ->count();
+        return QueueService::where('isActive', true)->where('publicBookable', true)->where('queueEnabled', true)
+            ->orderBy('name')->get()->map(function (QueueService $service) use ($today) {
+                $issued = QueueTicket::where('serviceId', $service->id)->where('queueDate', $today)->count();
 
                 return [
-                    'id' => $service->id,
-                    'code' => $service->code,
-                    'name' => $service->name,
-                    'instructions' => $service->instructions,
-                    'queuePaused' => $service->queuePaused,
-                    'queueCapacity' => $service->queueCapacity,
-                    'issuedCount' => $issuedCount,
-                    'remainingCount' => max(0, $service->queueCapacity - $issuedCount),
-                    'acceptingTickets' => ! $service->queuePaused && $issuedCount < $service->queueCapacity,
+                    'id' => $service->id, 'code' => $service->code, 'name' => $service->name,
+                    'instructions' => $service->instructions, 'queuePaused' => $service->queuePaused,
+                    'queueCapacity' => $service->queueCapacity, 'issuedCount' => $issued,
+                    'remainingCount' => max(0, $service->queueCapacity - $issued),
+                    'acceptingTickets' => ! $service->queuePaused && $issued < $service->queueCapacity,
                 ];
             });
     }
@@ -48,77 +35,44 @@ class PublicVirtualQueueController extends Controller
     public function join(Request $request)
     {
         $data = $request->validate([
-            'service_id' => 'required|string|exists:appointment_services,id',
+            'service_id' => 'required|string|exists:queue_services,id',
             'applicant_name' => 'required|string|max:255',
             'applicant_email' => 'required|email|max:255',
             'applicant_phone' => 'required|string|max:50',
         ]);
         $today = now('Asia/Manila')->toDateString();
-        $accessToken = bin2hex(random_bytes(32));
+        $token = bin2hex(random_bytes(32));
         $email = strtolower(trim($data['applicant_email']));
-
-        $entry = DB::transaction(function () use ($data, $today, $accessToken, $email) {
-            $service = AppointmentService::whereKey($data['service_id'])->lockForUpdate()->firstOrFail();
+        $ticket = DB::transaction(function () use ($data, $today, $token, $email) {
+            $service = QueueService::whereKey($data['service_id'])->lockForUpdate()->firstOrFail();
             if (! $service->isActive || ! $service->publicBookable || ! $service->queueEnabled) {
                 abort(422, 'Guest virtual queue tickets are not available for this service.');
             }
             if ($service->queuePaused) {
                 abort(409, 'This virtual queue is temporarily paused. Please try again later.');
             }
-
-            $this->lockQueueSequence($service->id, $today);
-            if (AppointmentQueueEntry::where('queueDate', $today)
-                ->where('serviceId', $service->id)
-                ->where('guestEmail', $email)
-                ->whereIn('status', self::ACTIVE_STATUSES)
-                ->whereNull('appointmentId')
-                ->exists()) {
+            $this->lockSequence($service->id, $today);
+            if (QueueTicket::where('serviceId', $service->id)->where('queueDate', $today)->where('guestEmail', $email)
+                ->whereIn('status', ['WAITING', 'CALLED', 'SERVING'])->exists()) {
                 abort(409, 'This email already has an active ticket for this service today.');
             }
-
-            $issuedCount = AppointmentQueueEntry::where('serviceId', $service->id)
-                ->where('queueDate', $today)
-                ->whereNull('appointmentId')
-                ->count();
-            if ($issuedCount >= $service->queueCapacity) {
+            $issued = QueueTicket::where('serviceId', $service->id)->where('queueDate', $today)->count();
+            if ($issued >= $service->queueCapacity) {
                 abort(409, 'This virtual queue has reached its daily capacity.');
             }
-
-            $sequence = DB::table('appointment_queue_sequences')
-                ->where('serviceId', $service->id)
-                ->where('appointmentDate', $today)
-                ->lockForUpdate()
-                ->first();
-            $queueNumber = (int) $sequence->lastNumber + 1;
-            DB::table('appointment_queue_sequences')
-                ->where('serviceId', $service->id)
-                ->where('appointmentDate', $today)
-                ->update(['lastNumber' => $queueNumber]);
-
+            $number = $this->nextNumber($service->id, $today);
             $now = Oess::now();
 
-            return AppointmentQueueEntry::create([
-                'id' => (string) Str::uuid(),
-                'appointmentId' => null,
-                'userId' => null,
-                'guestName' => trim($data['applicant_name']),
-                'guestEmail' => $email,
-                'guestPhone' => trim($data['applicant_phone']),
-                'guestAccessTokenHash' => hash('sha256', $accessToken),
-                'serviceId' => $service->id,
-                'queueDate' => $today,
-                'queueNumber' => $queueNumber,
-                'status' => 'WAITING',
-                'checkedInAt' => $now,
-                'createdAt' => $now,
-                'updatedAt' => $now,
+            return QueueTicket::create([
+                'id' => (string) Str::uuid(), 'userId' => null, 'guestName' => trim($data['applicant_name']),
+                'guestEmail' => $email, 'guestPhone' => trim($data['applicant_phone']),
+                'guestAccessTokenHash' => hash('sha256', $token), 'serviceId' => $service->id,
+                'queueDate' => $today, 'queueNumber' => $number, 'status' => 'WAITING',
+                'checkedInAt' => $now, 'createdAt' => $now, 'updatedAt' => $now,
             ])->load(['service', 'user']);
         }, 5);
 
-        return response()->json([
-            'ticket' => $this->ticketPayload($entry),
-            'accessToken' => $accessToken,
-        ], 201);
+        return response()->json(['ticket' => $this->ticketPayload($ticket), 'accessToken' => $token], 201);
     }
 
     public function retrieve(Request $request)
@@ -128,18 +82,15 @@ class PublicVirtualQueueController extends Controller
             'access_token' => 'required|string|size:64',
         ]);
         [$serviceCode, $number] = $this->parseTicketNumber($data['ticket_number']);
-        $entry = AppointmentQueueEntry::with(['service', 'user'])
-            ->where('queueNumber', $number)
+        $ticket = QueueTicket::with(['service', 'user'])->where('queueNumber', $number)
             ->where('guestAccessTokenHash', hash('sha256', $data['access_token']))
             ->whereHas('service', fn ($query) => $query->where('code', $serviceCode))
-            ->whereNull('appointmentId')
-            ->first();
-
-        if (! $entry) {
+            ->whereNull('userId')->first();
+        if (! $ticket) {
             abort(404, 'The ticket number or access code is invalid.');
         }
 
-        return response()->json(['ticket' => $this->ticketPayload($entry)]);
+        return response()->json(['ticket' => $this->ticketPayload($ticket)]);
     }
 
     public function cancel(Request $request)
@@ -149,85 +100,67 @@ class PublicVirtualQueueController extends Controller
             'access_token' => 'required|string|size:64',
         ]);
         [$serviceCode, $number] = $this->parseTicketNumber($data['ticket_number']);
-        $entry = DB::transaction(function () use ($data, $serviceCode, $number) {
-            $entry = AppointmentQueueEntry::with(['service', 'user'])
-                ->where('queueNumber', $number)
+        $ticket = DB::transaction(function () use ($data, $serviceCode, $number) {
+            $ticket = QueueTicket::with(['service', 'user'])->where('queueNumber', $number)
                 ->where('guestAccessTokenHash', hash('sha256', $data['access_token']))
                 ->whereHas('service', fn ($query) => $query->where('code', $serviceCode))
-                ->whereNull('appointmentId')
-                ->lockForUpdate()
-                ->first();
-            if (! $entry) {
+                ->whereNull('userId')->lockForUpdate()->first();
+            if (! $ticket) {
                 abort(404, 'The ticket number or access code is invalid.');
             }
-            if ($entry->queueDate !== now('Asia/Manila')->toDateString() || $entry->status !== 'WAITING') {
+            if ($ticket->queueDate !== now('Asia/Manila')->toDateString() || $ticket->status !== 'WAITING') {
                 abort(409, 'Only a waiting ticket for today can be cancelled.');
             }
+            $ticket->status = 'CANCELLED';
+            $ticket->updatedAt = Oess::now();
+            $ticket->save();
 
-            $entry->status = 'CANCELLED';
-            $entry->updatedAt = Oess::now();
-            $entry->save();
-
-            return $entry->fresh(['service', 'user']);
+            return $ticket->fresh(['service', 'user']);
         }, 5);
 
-        return response()->json(['ticket' => $this->ticketPayload($entry)]);
+        return response()->json(['ticket' => $this->ticketPayload($ticket)]);
     }
 
-    private function ticketPayload(AppointmentQueueEntry $entry): array
+    private function ticketPayload(QueueTicket $ticket): array
     {
-        $service = $entry->service;
+        $service = $ticket->service;
         $payload = [
-            'queueEntryId' => $entry->id,
-            'queueTicket' => $service->code.'-'.str_pad((string) $entry->queueNumber, 3, '0', STR_PAD_LEFT),
-            'serviceId' => $service->id,
-            'serviceCode' => $service->code,
-            'serviceName' => $service->name,
-            'serviceInstructions' => $service->instructions,
-            'queuePaused' => $service->queuePaused,
-            'serviceAvailable' => $service->isActive,
-            'appointmentDate' => $entry->queueDate,
-            'studentName' => $entry->guestName,
-            'status' => $entry->status,
-            'queueNumber' => $entry->queueNumber,
-            'queueStatus' => $entry->status,
-            'checkedInAt' => $entry->checkedInAt,
-            'calledAt' => $entry->calledAt,
-            'serviceStartedAt' => $entry->serviceStartedAt,
-            'completedAt' => $entry->completedAt,
-            'createdAt' => $entry->createdAt,
-            'walkIn' => true,
+            'queueEntryId' => $ticket->id,
+            'queueTicket' => $service->code.'-'.str_pad((string) $ticket->queueNumber, 3, '0', STR_PAD_LEFT),
+            'serviceId' => $service->id, 'serviceCode' => $service->code, 'serviceName' => $service->name,
+            'serviceInstructions' => $service->instructions, 'queuePaused' => $service->queuePaused,
+            'serviceAvailable' => $service->isActive && $service->queueEnabled,
+            'queueDate' => $ticket->queueDate, 'isGuest' => true, 'studentName' => $ticket->guestName,
+            'status' => $ticket->status, 'queueNumber' => $ticket->queueNumber, 'queueStatus' => $ticket->status,
+            'checkedInAt' => $ticket->checkedInAt, 'calledAt' => $ticket->calledAt,
+            'serviceStartedAt' => $ticket->serviceStartedAt, 'completedAt' => $ticket->completedAt,
+            'createdAt' => $ticket->createdAt, 'walkIn' => true,
         ];
 
-        return $entry->status === 'WAITING'
-            ? array_merge($payload, $this->waitEstimator->estimate($entry))
-            : $payload;
+        return $ticket->status === 'WAITING' ? array_merge($payload, $this->waitEstimator->estimate($ticket)) : $payload;
     }
 
     private function parseTicketNumber(string $ticketNumber): array
     {
         $separator = strrpos($ticketNumber, '-');
-        $serviceCode = substr($ticketNumber, 0, $separator);
-        $number = (int) substr($ticketNumber, $separator + 1);
 
-        return [$serviceCode, $number];
+        return [substr($ticketNumber, 0, $separator), (int) substr($ticketNumber, $separator + 1)];
     }
 
-    private function lockQueueSequence(string $serviceId, string $date): void
+    private function lockSequence(string $serviceId, string $date): void
     {
-        DB::table('appointment_queue_sequences')->insertOrIgnore([
-            'serviceId' => $serviceId,
-            'appointmentDate' => $date,
-            'lastNumber' => 0,
-        ]);
-        DB::table('appointment_queue_sequences')
-            ->where('serviceId', $serviceId)
-            ->where('appointmentDate', $date)
+        DB::table('queue_sequences')->insertOrIgnore(['serviceId' => $serviceId, 'queueDate' => $date, 'lastNumber' => 0]);
+        DB::table('queue_sequences')->where('serviceId', $serviceId)->where('queueDate', $date)
             ->update(['lastNumber' => DB::raw('lastNumber')]);
-        DB::table('appointment_queue_sequences')
-            ->where('serviceId', $serviceId)
-            ->where('appointmentDate', $date)
-            ->lockForUpdate()
-            ->first();
+        DB::table('queue_sequences')->where('serviceId', $serviceId)->where('queueDate', $date)->lockForUpdate()->first();
+    }
+
+    private function nextNumber(string $serviceId, string $date): int
+    {
+        $sequence = DB::table('queue_sequences')->where('serviceId', $serviceId)->where('queueDate', $date)->lockForUpdate()->first();
+        $number = (int) $sequence->lastNumber + 1;
+        DB::table('queue_sequences')->where('serviceId', $serviceId)->where('queueDate', $date)->update(['lastNumber' => $number]);
+
+        return $number;
     }
 }
