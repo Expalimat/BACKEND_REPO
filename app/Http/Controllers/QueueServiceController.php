@@ -133,6 +133,24 @@ class QueueServiceController extends Controller
         return response()->json($service);
     }
 
+    public function destroy(Request $request, string $serviceId)
+    {
+        $service = QueueService::findOrFail($serviceId);
+        if ($service->tickets()->exists()) {
+            abort(409, 'This queue service already has tickets and cannot be deleted. Disable its queue instead.');
+        }
+
+        DB::transaction(function () use ($service) {
+            DB::table('queue_service_staff')->where('serviceId', $service->id)->delete();
+            DB::table('queue_sequences')->where('serviceId', $service->id)->delete();
+            $service->delete();
+        });
+
+        Oess::audit($request->user(), 'Deleted Queue Service', 'Virtual Queue', "Deleted queue service {$service->code}: {$service->name}");
+
+        return response()->json(['message' => 'Queue service deleted.']);
+    }
+
     private function serviceRules(bool $creating): array
     {
         $nameRules = $creating

@@ -76,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () use ($role, $queueStaff, $q
         Route::get('/services', [QueueServiceController::class, 'index'])->middleware($role('Student', 'Registrar', 'Department Staff', 'Administrator'));
         Route::post('/services', [QueueServiceController::class, 'store'])->middleware($queueAdmin);
         Route::put('/services/{serviceId}', [QueueServiceController::class, 'update'])->middleware($queueAdmin);
+        Route::delete('/services/{serviceId}', [QueueServiceController::class, 'destroy'])->middleware($queueAdmin);
         Route::get('/staff/services/{serviceId}/staff', [QueueServiceController::class, 'staffAssignments'])->middleware($queueAdmin);
         Route::put('/staff/services/{serviceId}/staff', [QueueServiceController::class, 'updateStaffAssignments'])->middleware($queueAdmin);
         Route::patch('/staff/services/{serviceId}/queue-pause', [QueueServiceController::class, 'setQueuePause'])->middleware($queueStaff);
