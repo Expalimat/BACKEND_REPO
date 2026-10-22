@@ -44,6 +44,19 @@ class AppointmentController extends Controller
                     ->whereIn('status', ['CALLED', 'SERVING'])
                     ->orderBy('calledAt')
                     ->first();
+                $upcomingBookedSlots = AppointmentSlot::where('serviceId', $service->id)
+                    ->where(function ($query) use ($today) {
+                        $query->where('appointmentDate', '>', $today)
+                            ->orWhere(function ($todayQuery) use ($today) {
+                                $todayQuery->where('appointmentDate', $today)
+                                    ->where('startTime', '>=', now('Asia/Manila')->format('H:i:s'));
+                            });
+                    })
+                    ->whereHas('appointments', fn ($query) => $query->whereIn('status', self::CAPACITY_STATUSES))
+                    ->withCount(['appointments as bookedCount' => fn ($query) => $query->whereIn('status', self::CAPACITY_STATUSES)])
+                    ->orderBy('appointmentDate')
+                    ->orderBy('startTime')
+                    ->get();
 
                 return [
                     'serviceCode' => $service->code,
@@ -55,6 +68,13 @@ class AppointmentController extends Controller
                         ->where('queueDate', $today)
                         ->where('status', 'WAITING')
                         ->count(),
+                    'upcomingBookedSlots' => $upcomingBookedSlots->map(fn (AppointmentSlot $slot) => [
+                        'appointmentDate' => $slot->appointmentDate,
+                        'startTime' => substr($slot->startTime, 0, 5),
+                        'bookedCount' => $slot->bookedCount,
+                        'capacity' => $slot->capacity,
+                        'remainingCount' => max(0, $slot->capacity - $slot->bookedCount),
+                    ])->values(),
                     'averageServiceDurationMinutes' => app(AppointmentWaitEstimator::class)
                         ->averageDuration($service->id),
                 ];

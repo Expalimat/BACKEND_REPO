@@ -352,6 +352,42 @@ class AppointmentSchedulingTest extends TestCase
         ]);
     }
 
+    public function test_public_queue_display_reports_upcoming_slot_capacity_without_counting_confirmed_bookings_as_waiting(): void
+    {
+        $service = AppointmentService::where('code', 'FRESHMAN-ENROLLMENT')->firstOrFail();
+        $slot = AppointmentSlot::create([
+            'id' => fake()->uuid(),
+            'serviceId' => $service->id,
+            'appointmentDate' => '2026-10-20',
+            'startTime' => '09:00',
+            'endTime' => '09:30',
+            'capacity' => 10,
+            'status' => 'Open',
+            'createdAt' => now('Asia/Manila')->format('Y-m-d h:i A'),
+            'updatedAt' => now('Asia/Manila')->format('Y-m-d h:i A'),
+        ]);
+
+        foreach (range(1, 3) as $number) {
+            $this->postJson('/api/public/appointments/book', [
+                'slot_id' => $slot->id,
+                'applicant_name' => "Applicant {$number}",
+                'applicant_email' => "applicant{$number}@example.com",
+                'applicant_phone' => '09123456789',
+            ])->assertCreated();
+        }
+
+        $services = $this->getJson('/api/appointment-queue/display')
+            ->assertOk()
+            ->json('data.services');
+        $freshmanService = collect($services)->firstWhere('serviceCode', 'FRESHMAN-ENROLLMENT');
+
+        $this->assertSame(0, $freshmanService['waitingCount']);
+        $this->assertSame('2026-10-20', $freshmanService['upcomingBookedSlots'][0]['appointmentDate']);
+        $this->assertSame(3, $freshmanService['upcomingBookedSlots'][0]['bookedCount']);
+        $this->assertSame(10, $freshmanService['upcomingBookedSlots'][0]['capacity']);
+        $this->assertSame(7, $freshmanService['upcomingBookedSlots'][0]['remainingCount']);
+    }
+
     public function test_queue_calls_are_serialized_and_completion_cannot_be_repeated(): void
     {
         $slot = $this->createSlot('2026-10-19', '09:00', 2);
