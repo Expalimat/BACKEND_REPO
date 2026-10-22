@@ -11,6 +11,7 @@ use App\Http\Controllers\GradeController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PublicAppointmentController;
+use App\Http\Controllers\PublicVirtualQueueController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\UserController;
@@ -36,6 +37,13 @@ Route::prefix('public/appointments')->middleware('throttle:30,1')->group(functio
     Route::get('/services', [PublicAppointmentController::class, 'services']);
     Route::get('/availability', [PublicAppointmentController::class, 'availability']);
     Route::post('/book', [PublicAppointmentController::class, 'book']);
+});
+
+Route::prefix('public/virtual-queue')->group(function () {
+    Route::get('/services', [PublicVirtualQueueController::class, 'services'])->middleware('throttle:30,1');
+    Route::post('/tickets', [PublicVirtualQueueController::class, 'join'])->middleware('throttle:10,1');
+    Route::post('/tickets/retrieve', [PublicVirtualQueueController::class, 'retrieve'])->middleware('throttle:10,1');
+    Route::patch('/tickets/cancel', [PublicVirtualQueueController::class, 'cancel'])->middleware('throttle:10,1');
 });
 
 Route::middleware('auth:sanctum')->group(function () use ($role, $appointmentStaff, $appointmentAdmin) {

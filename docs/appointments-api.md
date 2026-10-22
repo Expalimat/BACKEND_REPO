@@ -88,7 +88,7 @@ university policy.
 | `GET /services` | Student, assigned Registrar/Department Staff, Administrator | Active service catalog for students; staff see only assigned services (active and inactive); Administrator sees all. |
 | `GET /appointment-services` | Student, assigned Registrar/Department Staff, Administrator | Compatibility alias for `GET /services`. |
 | `GET /appointment-slots` | Student | Bookable slots. Optional `service_id`, `date_from`, `date_to`; aliases `serviceId`, `from`, `to` are accepted. Disabled, closed-date, fully booked, inactive-service, out-of-window, and passed-today slots are not returned. |
-| `GET /student/virtual-queue/services` | Student | List active services configured for direct virtual-queue tickets with current capacity and intake state. Freshman Enrollment Appointment is always appointment-only. |
+| `GET /student/virtual-queue/services` | Student | List active services configured for direct student tickets with current capacity and intake state. Freshman enrollment remains excluded from authenticated student walk-ins. |
 | `GET /student/virtual-queue/tickets` | Student | Retrieve the authenticated student's active virtual ticket(s) for today; only tickets owned by that account are returned. |
 | `POST /student/virtual-queue/tickets` | Student | Join a virtual queue without an appointment. Body: `serviceId`. Requires a linked student account, enabled/unpaused service, available daily capacity, and no other active ticket today. Returns `201`. |
 | `PATCH /student/virtual-queue/tickets/{queueEntryId}/cancel` | Student | Cancel the authenticated student's own ticket while it is waiting. Called or in-service tickets cannot be cancelled by the student. |
@@ -130,7 +130,26 @@ student number can join. A student may hold only one active direct ticket at a
 time, and the server enforces each service's daily limit on issued virtual
 tickets while serializing ticket issuance. Cancelled and completed tickets
 still count toward that day's issued-ticket limit; ticket numbers are not
-reused. Existing confirmed freshman enrollment bookings remain appointment-only.
+reused. Existing freshman appointments remain separate from queue tickets.
+
+### Incoming-freshman guest queue
+
+The guest API is limited to active services that are both `publicBookable` and
+`queueEnabled`; both settings require administrator control. Freshman enrollment
+queue intake remains off by default. Guests join with their name, email, and
+phone, and receive a one-time 256-bit access code. The database stores only its
+SHA-256 hash. Retrieval and cancellation require both the visible ticket number
+and the private access code; ticket numbers alone do not authorize access.
+Guest email addresses are normalized and prevent duplicate active tickets for
+the same service and operating day, but are not a substitute for official
+admission or identity verification. Public requests are rate-limited.
+
+| Method and path | Access | Purpose |
+|---|---|---|
+| `GET /public/virtual-queue/services` | Public, rate-limited | List public-bookable, queue-enabled services and their current intake state. |
+| `POST /public/virtual-queue/tickets` | Public, rate-limited | Join an eligible guest queue. Body: `service_id`, `applicant_name`, `applicant_email`, `applicant_phone`. Returns ticket data and one-time `accessToken`. |
+| `POST /public/virtual-queue/tickets/retrieve` | Public, rate-limited | Retrieve an existing guest ticket. Body: `ticket_number`, `access_token`. |
+| `PATCH /public/virtual-queue/tickets/cancel` | Public, rate-limited | Cancel a waiting guest ticket for today. Body: `ticket_number`, `access_token`. |
 
 An Administrator enables direct queue intake and configures its daily capacity
 in **Appointments & Queue**. Assigned operational staff and Administrators
