@@ -125,7 +125,7 @@ return new class extends Migration
         );
 
         DB::table('notifications')->whereRaw(
-            "LOWER(COALESCE(relatedModule, '')) LIKE ? OR LOWER(title) LIKE ? OR LOWER(message) LIKE ?",
+            "LOWER(COALESCE(\"relatedModule\", '')) LIKE ? OR LOWER(title) LIKE ? OR LOWER(message) LIKE ?",
             ['%appointment%', '%appointment%', '%appointment%']
         )->delete();
 
@@ -146,7 +146,7 @@ return new class extends Migration
 
         foreach ([
             'appointment_notification_deliveries', 'appointment_status_history', 'appointment_service_closures',
-            'appointments', 'appointment_slots', 'appointment_daily_sequences', 'appointment_queue_entries',
+            'appointment_queue_entries', 'appointments', 'appointment_slots', 'appointment_daily_sequences',
             'appointment_queue_sequences', 'appointment_service_staff', 'appointment_services',
         ] as $table) {
             Schema::dropIfExists($table);

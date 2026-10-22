@@ -151,7 +151,7 @@ class PublicVirtualQueueController extends Controller
     {
         DB::table('queue_sequences')->insertOrIgnore(['serviceId' => $serviceId, 'queueDate' => $date, 'lastNumber' => 0]);
         DB::table('queue_sequences')->where('serviceId', $serviceId)->where('queueDate', $date)
-            ->update(['lastNumber' => DB::raw('lastNumber')]);
+            ->update(['lastNumber' => DB::raw(DB::getQueryGrammar()->wrap('lastNumber'))]);
         DB::table('queue_sequences')->where('serviceId', $serviceId)->where('queueDate', $date)->lockForUpdate()->first();
     }
 
