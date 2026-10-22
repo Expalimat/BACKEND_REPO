@@ -135,11 +135,13 @@ class QueueServiceController extends Controller
 
     private function serviceRules(bool $creating): array
     {
-        $required = $creating ? 'required' : 'sometimes|required';
+        $nameRules = $creating
+            ? ['required', 'string', 'max:255']
+            : ['sometimes', 'required', 'string', 'max:255'];
 
         return [
             'code' => [$creating ? 'required' : 'sometimes', 'string', 'max:30', 'regex:/^[A-Za-z0-9_-]+$/'],
-            'name' => [$required, 'string', 'max:255'],
+            'name' => $nameRules,
             'description' => 'sometimes|nullable|string|max:2000',
             'instructions' => 'sometimes|nullable|string|max:5000',
             'isActive' => 'sometimes|boolean',

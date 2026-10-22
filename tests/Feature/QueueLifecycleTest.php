@@ -108,6 +108,19 @@ class QueueLifecycleTest extends TestCase
         ])->assertOk()->assertJsonPath('ticket.queueStatus', 'CANCELLED');
     }
 
+    public function test_administrator_can_update_queue_service_name_and_settings(): void
+    {
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $service = QueueService::where('code', 'FRESHMAN-ENROLLMENT')->firstOrFail();
+
+        $this->actingAs($admin)->putJson('/api/services/'.$service->id, [
+            'name' => 'Freshman Enrollment Support',
+            'publicBookable' => true,
+        ])->assertOk()
+            ->assertJsonPath('data.name', 'Freshman Enrollment Support')
+            ->assertJsonPath('data.publicBookable', true);
+    }
+
     public function test_staff_queue_lifecycle_enforces_assignment_and_status_transitions(): void
     {
         $registrar = User::where('username', 'registrar')->firstOrFail();
