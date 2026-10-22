@@ -22,9 +22,9 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Safe to run on every deploy, only seeds an empty database. Existing
-        // installations still receive the default seeded appointment assignment.
+        // installations still receive the default queue-service assignment.
         if (User::count() > 0) {
-            $this->seedDefaultAppointmentAssignments();
+            $this->seedDefaultQueueAssignments();
             return;
         }
 
@@ -52,24 +52,24 @@ class DatabaseSeeder extends Seeder
 
         SystemSetting::create(['data' => $seed['settings']]);
 
-        $this->seedDefaultAppointmentAssignments();
+        $this->seedDefaultQueueAssignments();
     }
 
-    private function seedDefaultAppointmentAssignments(): void
+    private function seedDefaultQueueAssignments(): void
     {
         if (app()->environment('testing')) {
             return;
         }
 
         $registrarId = User::where('username', 'registrar')->value('id');
-        $serviceIds = DB::table('appointment_services')->pluck('id');
+        $serviceIds = DB::table('queue_services')->pluck('id');
         if (! $registrarId || $serviceIds->isEmpty()) {
             return;
         }
 
         $now = now('Asia/Manila')->format('Y-m-d h:i A');
         foreach ($serviceIds as $serviceId) {
-            DB::table('appointment_service_staff')->insertOrIgnore([
+            DB::table('queue_service_staff')->insertOrIgnore([
                 'serviceId' => $serviceId,
                 'userId' => $registrarId,
                 'assignedByUserId' => null,
