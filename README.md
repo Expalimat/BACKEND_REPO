@@ -96,10 +96,23 @@ Students can book, view their own appointment details and event history,
 cancel eligible upcoming appointments, and reschedule eligible bookings.
 Students can also join the CTC / Document Claiming virtual queue without an
 appointment, retrieve their own active ticket, and cancel it while waiting.
-Freshman enrollment remains appointment-only. Direct tickets share the
-service's daily Manila-date queue and capacity; Administrators configure
-virtual intake and daily capacity, while assigned staff can pause or resume
-intake without removing existing tickets.
+Incoming freshmen can continue to schedule enrollment appointments. They can
+also use a separate guest queue flow only for a service that an Administrator
+has both marked public-bookable and enabled for virtual queue intake; freshman
+queue intake is disabled by default. Guest tickets use a random private access
+code for retrieval and cancellation, and only its SHA-256 hash is stored.
+Guest contact details are not returned to public clients, and a queue ticket
+does not establish admission or enrollment. Direct tickets share the service's
+daily Manila-date queue and capacity; Administrators configure virtual intake
+and daily capacity, while assigned staff can pause or resume intake without
+removing existing tickets.
+
+Student ticket pages poll every ten seconds and guest ticket pages every eight
+seconds while active.
+The ticket is stored in the database, so a student can retrieve it after
+reopening the page; a guest must save both the displayed ticket number and
+private access code. This provides in-page updates only, not background push
+or SMS notifications.
 Student self-check-in is disabled; an authorized assigned Registrar,
 Department Staff member, or Administrator checks students in at the office.
 The authenticated account supplies the

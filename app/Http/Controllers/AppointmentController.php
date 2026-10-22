@@ -150,7 +150,7 @@ class AppointmentController extends Controller
                     ->count();
                 $issuedCount = AppointmentQueueEntry::where('serviceId', $service->id)
                     ->where('queueDate', $today)
-                    ->whereNotNull('userId')
+                    ->whereNull('appointmentId')
                     ->count();
 
                 return [
@@ -214,7 +214,7 @@ class AppointmentController extends Controller
 
             $issuedCount = AppointmentQueueEntry::where('serviceId', $service->id)
                 ->where('queueDate', $today)
-                ->whereNotNull('userId')
+                ->whereNull('appointmentId')
                 ->count();
             if ($issuedCount >= $service->queueCapacity) {
                 abort(409, 'This virtual queue has reached its daily capacity.');
@@ -679,15 +679,11 @@ class AppointmentController extends Controller
         }
 
         $entries = $query->get();
-        $positions = [];
 
-        return $entries->map(function (AppointmentQueueEntry $entry) use (&$positions) {
-            $serviceDate = $entry->serviceId.'|'.$entry->queueDate;
-            $position = null;
-            if ($entry->status === 'WAITING') {
-                $position = ($positions[$serviceDate] ?? 0) + 1;
-                $positions[$serviceDate] = $position;
-            }
+        return $entries->map(function (AppointmentQueueEntry $entry) {
+            $position = $entry->status === 'WAITING'
+                ? $this->waitEstimator->estimate($entry)['queuePosition']
+                : null;
             $appointment = $this->queueEntryPayload($entry);
             $appointment['queueEntryId'] = $entry->id;
             $appointment['queueStatus'] = $entry->status;
@@ -1280,10 +1276,14 @@ class AppointmentController extends Controller
             'serviceId' => $service->id,
             'serviceCode' => $service->code,
             'serviceName' => $service->name,
+            'serviceInstructions' => $service->instructions,
+            'queuePaused' => $service->queuePaused,
+            'serviceAvailable' => $service->isActive,
             'appointmentDate' => $entry->queueDate,
             'studentNumber' => $user?->studentNumber,
-            'studentName' => $user?->name,
-            'status' => $entry->status === 'SERVING' ? 'SERVING' : 'WAITING',
+            'studentName' => $user?->name ?? $entry->guestName,
+            'isGuest' => ! $user && (bool) $entry->guestAccessTokenHash,
+            'status' => $entry->status,
             'queueNumber' => $entry->queueNumber,
             'queueTicket' => $ticket,
             'queueStatus' => $entry->status,

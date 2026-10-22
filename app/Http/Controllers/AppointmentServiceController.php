@@ -121,13 +121,10 @@ class AppointmentServiceController extends Controller
         $data = $request->validate($this->serviceRules(false));
         $service = DB::transaction(function () use ($id, $data) {
             $service = $this->lockService($id);
-            if ($service->code === 'FRESHMAN-ENROLLMENT' && ($data['queueEnabled'] ?? false)) {
-                abort(422, 'Freshman enrollment must continue to use scheduled appointments.');
-            }
             if (isset($data['queueCapacity'])) {
                 $issuedTickets = AppointmentQueueEntry::where('serviceId', $service->id)
                     ->where('queueDate', now('Asia/Manila')->toDateString())
-                    ->whereNotNull('userId')
+                    ->whereNull('appointmentId')
                     ->count();
                 if ($data['queueCapacity'] < $issuedTickets) {
                     abort(422, "Queue capacity cannot be lower than the {$issuedTickets} virtual tickets already issued today.");

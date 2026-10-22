@@ -134,11 +134,30 @@ class AppointmentSchedulingTest extends TestCase
             ->assertJsonPath('data.queueTicket', 'CTC-003');
     }
 
-    public function test_freshman_enrollment_remains_appointment_only(): void
+    public function test_freshman_queue_requires_admin_opt_in_and_remains_guest_only(): void
     {
         $student = User::where('username', 'student')->firstOrFail();
         $admin = User::where('username', 'admin')->firstOrFail();
         $service = AppointmentService::where('code', 'FRESHMAN-ENROLLMENT')->firstOrFail();
+
+        $this->getJson('/api/public/virtual-queue/services')
+            ->assertOk()
+            ->assertExactJson([]);
+        $this->postJson('/api/public/virtual-queue/tickets', [
+            'service_id' => $service->id,
+            'applicant_name' => 'Incoming Student',
+            'applicant_email' => 'incoming@example.com',
+            'applicant_phone' => '09123456789',
+        ])->assertUnprocessable();
+
+        $this->actingAs($admin)
+            ->putJson('/api/appointment-services/'.$service->id, [
+                'name' => $service->name,
+                'publicBookable' => true,
+                'queueEnabled' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.queueEnabled', true);
 
         $this->actingAs($student)
             ->getJson('/api/student/virtual-queue/services')
@@ -147,13 +166,108 @@ class AppointmentSchedulingTest extends TestCase
         $this->actingAs($student)
             ->postJson('/api/student/virtual-queue/tickets', ['serviceId' => $service->id])
             ->assertUnprocessable();
-        $this->actingAs($admin)
-            ->putJson('/api/appointment-services/'.$service->id, [
-                'name' => $service->name,
-                'queueEnabled' => true,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'Freshman enrollment must continue to use scheduled appointments.');
+
+        $this->getJson('/api/public/virtual-queue/services')
+            ->assertOk()
+            ->assertJsonPath('0.code', 'FRESHMAN-ENROLLMENT')
+            ->assertJsonPath('0.acceptingTickets', true);
+    }
+
+    public function test_guest_ticket_requires_private_code_for_retrieval_and_cancellation(): void
+    {
+        $service = AppointmentService::where('code', 'FRESHMAN-ENROLLMENT')->firstOrFail();
+        $service->update(['queueEnabled' => true, 'publicBookable' => true]);
+
+        $ticket = $this->postJson('/api/public/virtual-queue/tickets', [
+            'service_id' => $service->id,
+            'applicant_name' => 'Incoming Student',
+            'applicant_email' => 'incoming@example.com',
+            'applicant_phone' => '09123456789',
+        ])->assertCreated()
+            ->assertJsonPath('ticket.queueTicket', 'FRESHMAN-ENROLLMENT-001')
+            ->assertJsonPath('ticket.queueStatus', 'WAITING')
+            ->assertJsonPath('ticket.studentName', 'Incoming Student')
+            ->assertJsonMissingPath('ticket.guestEmail')
+            ->json();
+
+        $entry = AppointmentQueueEntry::where('guestEmail', 'incoming@example.com')->firstOrFail();
+        $this->assertSame(hash('sha256', $ticket['accessToken']), $entry->guestAccessTokenHash);
+        $this->assertNotSame($ticket['accessToken'], $entry->guestAccessTokenHash);
+
+        $this->postJson('/api/public/virtual-queue/tickets/retrieve', [
+            'ticket_number' => $ticket['ticket']['queueTicket'],
+            'access_token' => str_repeat('0', 64),
+        ])->assertNotFound();
+
+        $this->postJson('/api/public/virtual-queue/tickets/retrieve', [
+            'ticket_number' => $ticket['ticket']['queueTicket'],
+            'access_token' => $ticket['accessToken'],
+        ])->assertOk()
+            ->assertJsonPath('ticket.queueTicket', $ticket['ticket']['queueTicket'])
+            ->assertJsonMissingPath('accessToken');
+
+        $this->actingAs(User::where('username', 'admin')->firstOrFail())
+            ->getJson('/api/staff/queue')
+            ->assertOk()
+            ->assertJsonPath('data.0.studentName', 'Incoming Student')
+            ->assertJsonPath('data.0.isGuest', true);
+
+        $this->patchJson('/api/public/virtual-queue/tickets/cancel', [
+            'ticket_number' => $ticket['ticket']['queueTicket'],
+            'access_token' => str_repeat('0', 64),
+        ])->assertNotFound();
+        $this->patchJson('/api/public/virtual-queue/tickets/cancel', [
+            'ticket_number' => $ticket['ticket']['queueTicket'],
+            'access_token' => $ticket['accessToken'],
+        ])->assertOk()
+            ->assertJsonPath('ticket.queueStatus', 'CANCELLED');
+    }
+
+    public function test_guest_ticket_consumes_queue_capacity_and_duplicate_active_email_is_rejected(): void
+    {
+        $service = AppointmentService::where('code', 'FRESHMAN-ENROLLMENT')->firstOrFail();
+        $service->update(['queueEnabled' => true, 'publicBookable' => true, 'queueCapacity' => 1]);
+        $payload = [
+            'service_id' => $service->id,
+            'applicant_name' => 'Incoming Student',
+            'applicant_email' => 'incoming@example.com',
+            'applicant_phone' => '09123456789',
+        ];
+
+        $this->postJson('/api/public/virtual-queue/tickets', $payload)->assertCreated();
+        $this->postJson('/api/public/virtual-queue/tickets', array_merge($payload, [
+            'applicant_email' => 'INCOMING@example.com',
+        ]))->assertStatus(409)
+            ->assertJsonPath('message', 'This email already has an active ticket for this service today.');
+        $this->postJson('/api/public/virtual-queue/tickets', array_merge($payload, [
+            'applicant_email' => 'another@example.com',
+        ]))->assertStatus(409)
+            ->assertJsonPath('message', 'This virtual queue has reached its daily capacity.');
+    }
+
+    public function test_waiting_ticket_position_counts_the_ticket_currently_being_served(): void
+    {
+        $firstStudent = User::where('username', 'student')->firstOrFail();
+        $secondStudent = $this->createStudent('student-queue-position', '2026-00008');
+        $serviceId = AppointmentService::where('code', 'CTC')->value('id');
+
+        $firstTicket = $this->actingAs($firstStudent)
+            ->postJson('/api/student/virtual-queue/tickets', ['serviceId' => $serviceId])
+            ->assertCreated()
+            ->json('data');
+        $this->actingAs($secondStudent)
+            ->postJson('/api/student/virtual-queue/tickets', ['serviceId' => $serviceId])
+            ->assertCreated();
+
+        $this->actingAs(User::where('username', 'registrar')->firstOrFail())
+            ->postJson('/api/staff/queue/'.$firstTicket['queueEntryId'].'/call')
+            ->assertOk();
+
+        $this->actingAs($secondStudent)
+            ->getJson('/api/student/virtual-queue/tickets')
+            ->assertOk()
+            ->assertJsonPath('data.0.queuePosition', 2)
+            ->assertJsonPath('data.0.eligiblePeopleAhead', 1);
     }
 
     public function test_virtual_queue_capacity_and_pause_are_enforced_without_removing_existing_tickets(): void
@@ -798,7 +912,7 @@ class AppointmentSchedulingTest extends TestCase
         $queue = $this->actingAs($registrar)
             ->getJson("/api/appointment-queue/{$slot->serviceId}")
             ->assertOk();
-        $this->assertSame(1, $queue->json('data.appointments.1.queuePosition'));
+        $this->assertSame(2, $queue->json('data.appointments.1.queuePosition'));
         $this->assertSame(30, $queue->json('data.appointments.1.estimatedWaitMinutes'));
         $this->assertSame('2026-00001', $queue->json('data.appointments.0.studentNumber'));
     }

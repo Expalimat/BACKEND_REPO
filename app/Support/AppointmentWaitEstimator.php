@@ -28,7 +28,7 @@ class AppointmentWaitEstimator
         return [
             'eligiblePeopleAhead' => $peopleAhead,
             'waitingPeopleAhead' => $waitingAhead,
-                        'queuePosition' => $waitingAhead + 1,
+            'queuePosition' => $peopleAhead + 1,
             'averageServiceDurationMinutes' => $averageDuration,
             'estimatedWaitMinutes' => (int) round($peopleAhead * $averageDuration),
             'estimatorVersion' => 'simple-queue-v1',
