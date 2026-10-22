@@ -73,8 +73,8 @@ return the full array for existing dashboard and integration consumers.
 ## Appointments and queue
 
 Run `php artisan migrate` to add service configuration, schedule closures,
-appointment snapshots and status history, separate queue entries, and
-notification-delivery tracking. The migration is additive and preserves the
+appointment snapshots and status history, separate queue entries, virtual
+queue configuration, and notification-delivery tracking. The migration is additive and preserves the
 existing users, students, document requests, and appointment records. The
 existing CTC claim service remains available; other service categories must be
 created by authorized staff rather than being assumed to be offered.
@@ -94,6 +94,12 @@ when booking is submitted.
 
 Students can book, view their own appointment details and event history,
 cancel eligible upcoming appointments, and reschedule eligible bookings.
+Students can also join the CTC / Document Claiming virtual queue without an
+appointment, retrieve their own active ticket, and cancel it while waiting.
+Freshman enrollment remains appointment-only. Direct tickets share the
+service's daily Manila-date queue and capacity; Administrators configure
+virtual intake and daily capacity, while assigned staff can pause or resume
+intake without removing existing tickets.
 Student self-check-in is disabled; an authorized assigned Registrar,
 Department Staff member, or Administrator checks students in at the office.
 The authenticated account supplies the

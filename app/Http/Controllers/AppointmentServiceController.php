@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\AppointmentQueueEntry;
 use App\Models\AppointmentService;
 use App\Models\AppointmentServiceClosure;
 use App\Models\AppointmentServiceStaff;
@@ -99,6 +100,9 @@ class AppointmentServiceController extends Controller
             'earlyArrivalWindowMinutes' => $data['earlyArrivalWindowMinutes'] ?? 30,
             'isActive' => true,
             'publicBookable' => $data['publicBookable'] ?? false,
+            'queueEnabled' => $data['queueEnabled'] ?? false,
+            'queuePaused' => $data['queuePaused'] ?? false,
+            'queueCapacity' => $data['queueCapacity'] ?? 50,
             'createdAt' => $now,
             'updatedAt' => $now,
         ]);
@@ -117,6 +121,18 @@ class AppointmentServiceController extends Controller
         $data = $request->validate($this->serviceRules(false));
         $service = DB::transaction(function () use ($id, $data) {
             $service = $this->lockService($id);
+            if ($service->code === 'FRESHMAN-ENROLLMENT' && ($data['queueEnabled'] ?? false)) {
+                abort(422, 'Freshman enrollment must continue to use scheduled appointments.');
+            }
+            if (isset($data['queueCapacity'])) {
+                $issuedTickets = AppointmentQueueEntry::where('serviceId', $service->id)
+                    ->where('queueDate', now('Asia/Manila')->toDateString())
+                    ->whereNotNull('userId')
+                    ->count();
+                if ($data['queueCapacity'] < $issuedTickets) {
+                    abort(422, "Queue capacity cannot be lower than the {$issuedTickets} virtual tickets already issued today.");
+                }
+            }
             $service->fill($data);
             $service->updatedAt = Oess::now();
             $service->save();
@@ -126,6 +142,25 @@ class AppointmentServiceController extends Controller
 
         Oess::audit($request->user(), 'Updated Appointment Service', 'Appointments',
             "Updated appointment service {$service->code}: {$service->name}");
+
+        return response()->json($service);
+    }
+
+    public function setQueuePause(Request $request, string $serviceId)
+    {
+        AppointmentAccess::assertServiceAccess($request->user(), $serviceId);
+        $data = $request->validate(['queuePaused' => 'required|boolean']);
+        $service = DB::transaction(function () use ($serviceId, $data) {
+            $service = $this->lockService($serviceId);
+            $service->queuePaused = $data['queuePaused'];
+            $service->updatedAt = Oess::now();
+            $service->save();
+
+            return $service;
+        }, 5);
+
+        Oess::audit($request->user(), $service->queuePaused ? 'Paused Virtual Queue Intake' : 'Resumed Virtual Queue Intake',
+            'Appointments', "{$service->code}: new ticket intake ".($service->queuePaused ? 'paused' : 'resumed'));
 
         return response()->json($service);
     }
@@ -411,6 +446,9 @@ class AppointmentServiceController extends Controller
             'earlyArrivalWindowMinutes' => 'sometimes|required|integer|min:0|max:1440',
             'isActive' => 'sometimes|required|boolean',
             'publicBookable' => 'sometimes|required|boolean',
+            'queueEnabled' => 'sometimes|required|boolean',
+            'queuePaused' => 'sometimes|required|boolean',
+            'queueCapacity' => 'sometimes|required|integer|min:1|max:500',
         ];
     }
 
